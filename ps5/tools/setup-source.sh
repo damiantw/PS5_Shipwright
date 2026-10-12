@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Ghostship for the PlayStation 5 - the game's sources, with the console's changes.
+# Ship of Harkinian for the PlayStation 5 - the game's sources, with the console's changes.
 #
-#   ps5/tools/setup-source.sh          apply ps5/patches/{ghostship,libultraship,torch}.patch
+#   ps5/tools/setup-source.sh          apply ps5/patches/{shipwright,libultraship,torch}.patch
 #   ps5/tools/setup-source.sh --save   write the trees' changes back to the patches
 #
 # vendor/ghostship is Ghostship at an upstream revision, with libultraship and
@@ -12,12 +12,14 @@
 # SPDX-License-Identifier: MIT
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-game="$root/vendor/ghostship"
-trees=(ghostship:"$game" libultraship:"$game/libultraship" torch:"$game/Torch")
-[[ -f $game/libultraship/CMakeLists.txt ]] || git -C "$root" submodule update --init --recursive vendor/ghostship
+game="$root/vendor/shipwright"
+trees=(shipwright:"$game" libultraship:"$game/libultraship" torch:"$game/torch")
+[[ -f $game/libultraship/CMakeLists.txt ]] || git -C "$root" submodule update --init --recursive vendor/shipwright
 
 if [[ ${1:-} == --save ]]; then
     for entry in "${trees[@]}"; do
+        # new files too (the Vulkan renderer is new to Shipwright's libultraship pin)
+        git -C "${entry#*:}" add -N -- . ':!properties.h' ':!soh/properties.h' ':!soh/assets/custom/shaders' ':!*.rej' 2>/dev/null || true
         # generated at configure time, never the console's change
         git -C "${entry#*:}" diff --ignore-submodules -- . ':!properties.h' ':!src/port/build.c' > "$root/ps5/patches/${entry%%:*}.patch"
     done

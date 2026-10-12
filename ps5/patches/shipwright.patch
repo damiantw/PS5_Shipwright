@@ -1,0 +1,137 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7951c1041..29312d8ba 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -362,6 +362,10 @@ add_dependencies(ExtractAssets GenerateSohOtr)
+ # The asset tools only need torch, so a tools-only configure can skip libultraship and soh
+ # entirely -- that is all CI needs to produce soh.o2r.
+ option(SOH_TOOLS_ONLY "Configure only the asset tools, skipping libultraship and soh" OFF)
++# PlayStation 5: soh.o2r comes from a host build of the packer (ps5/tools/assets.sh)
++if(PS5)
++    set_target_properties(GenerateSohOtr PROPERTIES EXCLUDE_FROM_ALL ON)
++endif()
+ if(SOH_TOOLS_ONLY)
+     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/soh)
+     return()
+diff --git a/soh/CMakeLists.txt b/soh/CMakeLists.txt
+index f356d2148..a6994829e 100644
+--- a/soh/CMakeLists.txt
++++ b/soh/CMakeLists.txt
+@@ -398,7 +398,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU|Clang|AppleClang")
+         "F3DEX_GBI_2;"
+         "_CONSOLE;"
+         "_CRT_SECURE_NO_WARNINGS;"
+-        "ENABLE_OPENGL;"
++        "$<$<NOT:$<BOOL:${PS5}>>:ENABLE_OPENGL>;"
+         "UNICODE;"
+         "_UNICODE;"
+         SPDLOG_ACTIVE_LEVEL=${SPDLOG_MIN_CUTOFF}
+@@ -674,6 +674,16 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+         -lglad
+         Threads::Threads
+     )
++elseif(PS5)
++    # PlayStation 5: SDL2 with the console's drivers, audio codecs from source
++    # (ps5/cmake/ps5-game.cmake); no SDL2_net, no OpenGL
++    set(ADDITIONAL_LIBRARY_DEPENDENCIES
++        "libultraship;"
++        "torch;"
++        SDL2::SDL2
++        ogg vorbis vorbisenc vorbisfile opus opusfile
++        SDL2_net::SDL2_net-static
++    )
+ elseif(CMAKE_SYSTEM_NAME STREQUAL "CafeOS")
+     find_package(SDL2 REQUIRED)
+     set(ADDITIONAL_LIBRARY_DEPENDENCIES
+diff --git a/soh/include/functions.h b/soh/include/functions.h
+index 22adf0362..5aa043169 100644
+--- a/soh/include/functions.h
++++ b/soh/include/functions.h
+@@ -63,7 +63,7 @@ u32 Locale_IsRegionNative(void);
+ void _assert(const char* exp, const char* file, s32 line);
+ #elif defined(__linux__)
+ void __assert(const char* exp, const char* file, s32 line) __THROW;
+-#elif !defined(__APPLE__) && !defined(__SWITCH__) && !defined(__OpenBSD__)
++#elif !defined(__APPLE__) && !defined(__SWITCH__) && !defined(__OpenBSD__) && !defined(__PROSPERO__)
+ void __assert(const char* exp, const char* file, s32 line);
+ #endif
+ #if defined(__APPLE__) && defined(NDEBUG)
+diff --git a/soh/soh/Enhancements/bootcommands.c b/soh/soh/Enhancements/bootcommands.c
+index baf3dc261..82cb18d59 100644
+--- a/soh/soh/Enhancements/bootcommands.c
++++ b/soh/soh/Enhancements/bootcommands.c
+@@ -9,7 +9,7 @@ void BootCommands_Init() {
+     CVarClear(CVAR_GENERAL("OnFileSelectNameEntry")); // Clear when soh is killed on the file name entry page
+     CVarClear(CVAR_GENERAL("BetterDebugWarpScreenMQMode"));
+     CVarClear(CVAR_GENERAL("BetterDebugWarpScreenMQModeScene"));
+-#if defined(__SWITCH__) || defined(__WIIU__)
++#if defined(__SWITCH__) || defined(__WIIU__) || defined(__PROSPERO__)
+     CVarRegisterInteger(CVAR_IMGUI_CONTROLLER_NAV, 1); // always enable controller nav on switch/wii u
+ #endif
+ }
+diff --git a/soh/soh/OTRGlobals.cpp b/soh/soh/OTRGlobals.cpp
+index d336c3c5b..6278da6f6 100644
+--- a/soh/soh/OTRGlobals.cpp
++++ b/soh/soh/OTRGlobals.cpp
+@@ -123,6 +123,9 @@
+ 
+ #ifdef __WIIU__
+ const uint32_t defaultImGuiScale = 3;
++#elif defined(__PROSPERO__)
++// PlayStation 5: a television across the room
++const uint32_t defaultImGuiScale = 2;
+ #else
+ const uint32_t defaultImGuiScale = 1;
+ #endif
+@@ -672,6 +675,18 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                         continue;
+                     }
+                     case PS_FIRST: {
++#ifdef __PROSPERO__
++                        // PlayStation 5: no file dialog. The ROM is found in the title's folder
++                        // (PS_LOCAL) or not at all.
++                        promptStep = PS_WAIT;
++                        SohGui::RegisterPopup("Game files needed",
++                                              "This needs your own copy of Ocarina of Time.\n\n"
++                                              "Copy oot.o2r / oot-mq.o2r, or a supported ROM (.z64),\n"
++                                              "to /data/homebrew/" PS5_TITLE_ID " on the console,\n"
++                                              "and start the game again.",
++                                              "OK", "", [&]() { exit(0); });
++                        continue;
++#endif
+                         if (!extract.ManuallySearchForRomMatchingType(RomSearchMode::Both)) {
+                             promptStep = PS_FILE_CHECK;
+                             continue;
+diff --git a/soh/soh/frame_interpolation.cpp b/soh/soh/frame_interpolation.cpp
+index 811f443ab..6ffdd0a6e 100644
+--- a/soh/soh/frame_interpolation.cpp
++++ b/soh/soh/frame_interpolation.cpp
+@@ -113,6 +113,16 @@ typedef pair<const void*, int> label;
+ union Data {
+     Data() {
+     }
++#ifdef __PROSPERO__
++    // PlayStation 5 (from PS5_Ghostship): plain data, so a vector of these can grow under the SDK's libc++
++    Data(const Data& other) {
++        memcpy(static_cast<void*>(this), &other, sizeof(Data));
++    }
++    Data& operator=(const Data& other) {
++        memcpy(static_cast<void*>(this), &other, sizeof(Data));
++        return *this;
++    }
++#endif
+ 
+     struct {
+         MtxF src;
+diff --git a/soh/src/buffers/heaps.c b/soh/src/buffers/heaps.c
+index de81705cb..93e4584ed 100644
+--- a/soh/src/buffers/heaps.c
++++ b/soh/src/buffers/heaps.c
+@@ -1,6 +1,6 @@
+ #include "z64.h"
+ #include <assert.h>
+-#if !defined(__APPLE__) && !defined(__OpenBSD__)
++#if !defined(__APPLE__) && !defined(__OpenBSD__) && !defined(__PROSPERO__)
+ #include <malloc.h>
+ #endif
+ #include <stdlib.h>

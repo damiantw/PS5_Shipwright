@@ -1,16 +1,16 @@
 /*
- * Ghostship for the PlayStation 5 - what runs before the game's main.
+ * Ship of Harkinian for the PlayStation 5 (from PS5_Ghostship) - what runs before the game's main.
  *
- * The game's main is its own (vendor/ghostship/src/port/Game.cpp), so the
+ * The game's main is its own (vendor/shipwright/soh/soh/OTRGlobals.cpp), so the
  * console's start-up is a constructor: standard error into klog and the
  * shell's splash dismissed, and where a title may keep its files.
  *
  * A title sees its own folder (/app0, which is /data/homebrew/<TITLE_ID>) and
  * nothing else of /data:
  *
- *   /app0/sm64.o2r         the game's data, made from your own copy of Super Mario 64
- *                          (or baserom.us.z64 itself, which the title converts once)
- *   /app0/ghostship.o2r    Ghostship's own assets
+ *   /app0/userdata/oot.o2r the game's data, made from your own Ocarina of Time ROM
+ *                          (a .z64 in /app0, which the title converts once)
+ *   /app0/soh.o2r          Ship of Harkinian's own assets
  *   /app0/userdata/        settings, saves, logs, mods/
  *   /app0/env.txt          optional: NAME=value lines for the environment
  *

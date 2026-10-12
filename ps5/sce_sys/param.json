@@ -7,9 +7,9 @@
   "attribute": 0,
   "attribute2": 0,
   "attribute3": 524352,
-  "conceptId": "99310",
+  "conceptId": "99320",
   "contentBadgeType": 1,
-  "contentId": "UP9000-PPSA99310_00-GHOSTSHIP0000000",
+  "contentId": "UP9000-PPSA99320_00-SHIPWRIGHT000000",
   "contentVersion": "01.000.000",
   "downloadDataSize": 256,
   "gameIntent": {
@@ -25,7 +25,7 @@
   "localizedParameters": {
     "defaultLanguage": "en-US",
     "en-US": {
-      "titleName": "Mario 64"
+      "titleName": "Ship of Harkinian"
     }
   },
   "masterVersion": "01.00",
@@ -36,6 +36,6 @@
   },
   "requiredSystemSoftwareVersion": "0x0000000000000000",
   "sdkVersion": "0x0000000000000000",
-  "titleId": "PPSA99310",
+  "titleId": "PPSA99320",
   "versionFileUri": ""
 }

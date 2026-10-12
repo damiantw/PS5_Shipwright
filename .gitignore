@@ -9,7 +9,7 @@ rom/
 *.z64
 *.n64
 *.v64
-sm64.o2r
+oot*.o2r
 userdata/
 game/
 *.o2r

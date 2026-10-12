@@ -12,8 +12,8 @@ names its own in its header, and may also be used under that licence alone.
 | The rest of `ps5/src/`, `ps5/tools/`, `ps5/cmake/` and `ps5/art/*.sh` (written for this port and the ports before it) | MIT | [`licenses/MIT.txt`](licenses/MIT.txt) |
 | `ps5/sdl/` (SDL2 drivers for the console) and `ps5/patches/sdl.patch` | Zlib, as SDL | [`licenses/Zlib.txt`](licenses/Zlib.txt) |
 | `ps5/third_party/volk/` | MIT | `ps5/third_party/volk/LICENSE.md` |
-| `ps5/patches/ghostship.patch`, `libultraship.patch`, `torch.patch` | MIT, as the projects they change | in each project's source |
-| The icon and the background | made for this port | |
+| `ps5/patches/shipwright.patch`, `libultraship.patch`, `torch.patch` | MIT, as the projects they change | in each project's source |
+| The icon and the background | still PS5_Ghostship's placeholders; to be replaced | |
 
 ## What is built from elsewhere
 
@@ -22,7 +22,8 @@ project, under that project's licence.
 
 | Part | Project | Licence |
 | --- | --- | --- |
-| The game's code | [Ghostship](https://github.com/HarbourMasters/Ghostship), which compiles the [Super Mario 64 decompilation](https://github.com/n64decomp/sm64) | MIT; CC0-1.0 |
+| The game's code | [Shipwright (Ship of Harkinian)](https://github.com/HarbourMasters/Shipwright), built on the [Ocarina of Time decompilation](https://github.com/zeldaret/oot) | see Shipwright's own licence files |
+| Audio codecs | ogg, vorbis, opus, opusfile (Xiph.Org) | BSD-3-Clause |
 | The N64 layer and renderer | [libultraship](https://github.com/Kenix3/libultraship) | MIT |
 | The ROM's conversion | [Torch](https://github.com/HarbourMasters/Torch) | MIT |
 | Windowing, input and sound output | [SDL2](https://github.com/libsdl-org/SDL) | Zlib |
@@ -38,3 +39,7 @@ A built `eboot.bin` links the GPL-3.0 platform layer with everything above, so
 a title as distributed is under **GPL-3.0**. It holds no game data: the player
 supplies their own ROM. This is my reading of the licences, not a review; no
 release has been made.
+
+## Origin
+
+The console layer (`ps5/`) is taken from [griches/PS5_Ghostship](https://github.com/griches/PS5_Ghostship) by Gary Riches, adapted for Shipwright. It sits on Mihawk's ([mihawk-99](https://github.com/mihawk-99)) PS5_Vulkan, PS5_Mesa, PS5_PayloadSDK and PS5_VulkanTemplate.

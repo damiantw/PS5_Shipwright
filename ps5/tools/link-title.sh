@@ -101,7 +101,9 @@ done
 radv_link_flags+=(--version-script "$work/link/shims-local.map")
 # The game defines these names of the C library's itself (libultra's _Printf, its own
 # atan2f): they stay the title's own, not exports that would replace libc.prx's
-printf '{\n    local:\n        _Printf;\n        atan2f;\n};\n' > "$work/link/game-local.map"
+# The game's own _Printf stays local: the converter takes no application exports
+# (PS5_Ghostship also kept SM64's atan2f here; Shipwright has none)
+printf '{\n    local:\n        _Printf;\n};\n' > "$work/link/game-local.map"
 radv_link_flags+=(--version-script "$work/link/game-local.map")
 "$sdk/bin/prospero-lld" "${radv_linker_script[@]}" --eh-frame-hdr "${radv_link_flags[@]}" \
     --version-script "$native/app-symbols.map" --exclude-libs=ALL \
@@ -163,5 +165,6 @@ printf '==> %s: %s (eboot.bin %s bytes; RADV %s)\n' "$title_id" "$app" \
     "$(stat -c %s "$app/eboot.bin")" "${archive_revision:0:11}"
 # The licences beside eboot.bin
 mkdir -p "$app/licenses"
-cp "$root/vendor/ghostship/LICENSE.md" "$app/licenses/Ghostship-LICENSE.md"
+cp "$root/vendor/shipwright/LICENSE" "$app/licenses/Shipwright-LICENSE.txt" 2>/dev/null || true
+cp "$root/LICENSE" "$app/licenses/PS5_Shipwright-LICENSE.txt"
 cp "$vulkan/LICENSE" "$app/licenses/PS5_Vulkan-LICENSE.txt"

@@ -326,3 +326,22 @@ ps5dl_realpath(const char *path, char *resolved)
    memcpy(resolved, out, length + 1);
    return resolved;
 }
+
+/* SDL2_net's SDLNet_ResolveIP (Shipwright's network features): the console's
+ * libc exports no gethostbyaddr. A reverse lookup simply finds nothing. */
+#include <netdb.h>
+struct hostent *
+gethostbyaddr(const void *addr, socklen_t len, int type)
+{
+   (void)addr; (void)len; (void)type;
+   return NULL;
+}
+
+/* ... and no gethostbyname: SDLNet_ResolveHost still takes numeric addresses
+ * (inet_addr); names do not resolve. */
+struct hostent *
+gethostbyname(const char *name)
+{
+   (void)name;
+   return NULL;
+}

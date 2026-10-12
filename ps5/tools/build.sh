@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ghostship for the PlayStation 5 - build the game into dist/<TITLE_ID>/.
+# Ship of Harkinian for the PlayStation 5 - build the game into dist/<TITLE_ID>/.
 #
 #   ps5/tools/build.sh [ninja arguments]
 #
@@ -30,14 +30,14 @@ export PS5_CLANG=${PS5_CLANG:-$(command -v clang || true)}
 
 if [[ ! -f $build/build.ninja ]]; then
     mkdir -p "$build"
-    cmake -S "$root/vendor/ghostship" -B "$build" -G Ninja -DCMAKE_MAKE_PROGRAM="$ninja" \
+    cmake -S "$root/vendor/shipwright" -B "$build" -G Ninja -DCMAKE_MAKE_PROGRAM="$ninja" \
         -DCMAKE_TOOLCHAIN_FILE="$sdk/toolchain/prospero.cmake" \
-        -DCMAKE_PROJECT_Ghostship_INCLUDE="$ps5/cmake/ps5-game.cmake" \
+        -DCMAKE_PROJECT_Ship_INCLUDE="$ps5/cmake/ps5-game.cmake" \
         -DPS5_PORT_DIR="$root" -DPS5_VULKAN_DIR="$vulkan" -DSDL_DIR="$sdl" -DSHADERC_DIR="$shaderc" \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=OFF > "$build/configure.log" 2>&1 \
         || { tail -60 "$build/configure.log" >&2; exit 1; }
 fi
-"$ninja" -C "$build" "${@:-Ghostship}"
+"$ninja" -C "$build" "${@:-soh}"
 
 # The title's name and art, as this tree has them (the link copies them too, but
 # only when something relinks)

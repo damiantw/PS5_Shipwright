@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ghostship for the PlayStation 5 - upload your own game data to the console.
 #
-#   ps5/tools/console-files.sh       game/<TITLE_ID>/ (sm64.o2r, from tools/assets.sh ROM)
+#   ps5/tools/console-files.sh       game/<TITLE_ID>/ (oot.o2r, from tools/assets.sh ROM)
 #                                    to /data/homebrew/<TITLE_ID>/ on the console
 #
 # The game's data is yours and is never part of dist/ or of a release: it goes
@@ -13,7 +13,7 @@ ps5=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 root=$(dirname "$ps5")
 vulkan=$(cd -- "${PS5_VULKAN_DIR:-$root/../PS5_Vulkan}" && pwd)
 title_id=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["titleId"])' "$ps5/sce_sys/param.json")
-[[ -f $root/game/$title_id/sm64.o2r ]] || { echo "no game/$title_id/sm64.o2r: run ps5/tools/assets.sh ROM.z64 first" >&2; exit 2; }
+[[ -f $root/game/$title_id/oot.o2r || -f $root/game/$title_id/oot-mq.o2r ]] || { echo "no game/$title_id/oot*.o2r: run ps5/tools/assets.sh ROM.z64 first" >&2; exit 2; }
 exec python3 - "$vulkan/tools" "$root/game/$title_id" "$title_id" <<'PY'
 import sys
 from ftplib import FTP, error_perm
