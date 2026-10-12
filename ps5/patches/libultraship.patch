@@ -3633,10 +3633,10 @@ index 15c5415f..6f2942ff 100644
          if (mVsyncEnabled) {
 diff --git a/src/fast/backends/gfx_vulkan.cpp b/src/fast/backends/gfx_vulkan.cpp
 new file mode 100644
-index 00000000..ee5e7634
+index 00000000..e43949d0
 --- /dev/null
 +++ b/src/fast/backends/gfx_vulkan.cpp
-@@ -0,0 +1,2449 @@
+@@ -0,0 +1,2450 @@
 +//
 +//  gfx_vulkan.cpp
 +//  libultraship
@@ -5808,16 +5808,17 @@ index 00000000..ee5e7634
 +std::unordered_map<std::pair<float, float>, uint16_t, hash_pair_ff>
 +GfxRenderingAPIVK::GetPixelDepth(int fbId, const std::set<std::pair<float, float>>& coordinates) {
 +    std::unordered_map<std::pair<float, float>, uint16_t, hash_pair_ff> res;
-+    if (fbId >= (int)mFramebuffers.size() || coordinates.empty() || !mFrameActive) {
-+        return res;
-+    }
-+    FramebufferVK& fb = mFramebuffers[fbId];
-+    if (fb.mDepthImage == VK_NULL_HANDLE || fb.mCommandBuffer == VK_NULL_HANDLE) {
++    // Callers (Interpreter::GetPixelDepth) look up every requested coordinate in the
++    // result, so never return a partial map: answer 0 (nearest) when no depth
++    // readback is possible, e.g. outside a frame (game logic runs before StartFrame).
++    if (fbId < 0 || fbId >= (int)mFramebuffers.size() || !mFrameActive ||
++        mFramebuffers[fbId].mDepthImage == VK_NULL_HANDLE || mFramebuffers[fbId].mCommandBuffer == VK_NULL_HANDLE) {
 +        for (const auto& coord : coordinates) {
 +            res.emplace(coord, 0);
 +        }
 +        return res;
 +    }
++    FramebufferVK& fb = mFramebuffers[fbId];
 +
 +    size_t needed = coordinates.size() * sizeof(float);
 +    if (mScreenReadbackCapacity < needed) {
@@ -6087,7 +6088,7 @@ index 00000000..ee5e7634
 +
 +#endif
 diff --git a/src/fast/interpreter.cpp b/src/fast/interpreter.cpp
-index 2b51ad7f..b283fe30 100644
+index 2b51ad7f..159f8c53 100644
 --- a/src/fast/interpreter.cpp
 +++ b/src/fast/interpreter.cpp
 @@ -117,6 +117,8 @@ Interpreter::Interpreter() {
@@ -8227,7 +8228,17 @@ index 2b51ad7f..b283fe30 100644
  
      mRapi->UpdateFramebufferParameters(0, mGfxCurrentWindowDimensions.width, mGfxCurrentWindowDimensions.height, 1,
                                         false, true, true, !mRendersToFb);
-@@ -5410,6 +6260,12 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
+@@ -5313,7 +6163,8 @@ uint16_t Interpreter::GetPixelDepth(float x, float y) {
+     mGetPixelDepthCached.merge(res);
+     mGetPixelDepthPending.clear();
+ 
+-    return mGetPixelDepthCached.find(std::make_pair(x, y))->second;
++    auto it = mGetPixelDepthCached.find(std::make_pair(x, y));
++    return it != mGetPixelDepthCached.end() ? it->second : 0;
+ }
+ 
+ void gfx_push_current_dir(char* path) {
+@@ -5410,6 +6261,12 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
      cc_features->opt_invisible = (shader_id1 & SHADER_OPT(INVISIBLE)) != 0;
      cc_features->opt_grayscale = (shader_id1 & SHADER_OPT(GRAYSCALE)) != 0;
      cc_features->opt_prim_depth = (shader_id1 & SHADER_OPT(PRIM_DEPTH)) != 0;
@@ -8240,7 +8251,7 @@ index 2b51ad7f..b283fe30 100644
  
      cc_features->clamp[0][0] = shader_id1 & SHADER_OPT(TEXEL0_CLAMP_S);
      cc_features->clamp[0][1] = shader_id1 & SHADER_OPT(TEXEL0_CLAMP_T);
-@@ -5423,15 +6279,21 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
+@@ -5423,15 +6280,21 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
      cc_features->used_blend[0] = false;
      cc_features->used_blend[1] = false;
      cc_features->numInputs = 0;
@@ -8263,7 +8274,7 @@ index 2b51ad7f..b283fe30 100644
                  if (cc_features->c[c][i][j] == SHADER_TEXEL0 || cc_features->c[c][i][j] == SHADER_TEXEL0A) {
                      cc_features->usedTextures[0] = true;
                      if (cc_features->opt_2cyc) {
-@@ -5444,10 +6306,20 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
+@@ -5444,10 +6307,20 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
                          cc_features->usedTextures[0] = true;
                      }
                  }
@@ -8284,7 +8295,7 @@ index 2b51ad7f..b283fe30 100644
      for (int c = 0; c < 2; c++) {
          cc_features->do_single[c][0] = cc_features->c[c][0][2] == SHADER_0;
          cc_features->do_single[c][1] = cc_features->c[c][1][2] == SHADER_0;
-@@ -5472,6 +6344,9 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
+@@ -5472,6 +6345,9 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
          cc_features->used_blend[1] = true;
      }
  
@@ -8294,7 +8305,7 @@ index 2b51ad7f..b283fe30 100644
      cc_features->shader_id = Fast::ShaderIdUnmask(shader_id1);
  }
  
-@@ -5487,8 +6362,10 @@ extern "C" void gfx_texture_cache_clear() {
+@@ -5487,8 +6363,10 @@ extern "C" void gfx_texture_cache_clear() {
  
  extern "C" void gfx_shader_cache_clear() {
      auto instance = Fast::mInstance.lock().get();
@@ -8305,7 +8316,7 @@ index 2b51ad7f..b283fe30 100644
      instance->mRenderingState.mShaderProgram = nullptr;
      instance->mRapi->ClearShaderCache();
  }
-@@ -5499,4 +6376,4 @@ extern "C" void gfx_register_fb_texture(const void* cpuAddr, int fbId) {
+@@ -5499,4 +6377,4 @@ extern "C" void gfx_register_fb_texture(const void* cpuAddr, int fbId) {
  
  extern "C" void gfx_unregister_fb_texture(const void* cpuAddr) {
      Fast::mInstance.lock().get()->UnregisterFbTexture(cpuAddr);
