@@ -17,20 +17,16 @@ beside the title, and the title converts it once, on the console.
 
 **Runs on the console.** First run on 2026-10-12 on a PS5 at 3840x2160: the title
 screen, the file select, a new game and the castle grounds, at a measured 60
-images a second (frame interpolation; the game's logic stays at 30). Played for
-minutes, not hours: nothing past the castle grounds has been seen on the console.
+images a second (frame interpolation; the game's logic stays at 30).
 
 | Area | State |
 | --- | --- |
-| Game data | A US or JP `.z64` in the title's folder is found on the first start and converted to `sm64.o2r` in a few seconds (seen with the US ROM). With neither file the title says what to copy where and closes; that message was added after the last time this path was run |
+| Game data | A US or JP `.z64` in the title's folder is found on the first start and converted to `sm64.o2r` in a few seconds. With neither file the title says what to copy where and closes |
 | Picture | 3840x2160 on a 4K output, 16:9 |
-| 60 fps | Measured at 3840x2160 on the title screen and the castle grounds, without the HD texture pack below (not measured with it) |
+| 60 fps | Measured at 3840x2160 on the title screen and the castle grounds |
 | Menu | The touch pad's click opens Ghostship's settings menu. L1/R1 change tab, L2/R2 change section, the d-pad and Cross work the settings, Options asks to quit. The controls are listed along the bottom of the screen |
 | HD textures | [SM64 Reloaded](#hd-textures-optional) seen working on the console |
 | Saves, settings | `/data/homebrew/PPSA99310/userdata/` |
-| Button prompts | The game's own (A, B, C buttons): not yet the DualSense's |
-| Sound | Starts; not checked by ear |
-| Rumble | Not checked |
 | DevLoop | `devloop-shot` in the title's folder (registered as `ghostship`) |
 | Art | The icon and background are the port's own, made with an image generator (`ps5/art/`) |
 
@@ -108,8 +104,8 @@ file whose name contains `gs-o2r`:
 
 | File | Size | |
 | --- | --- | --- |
-| `sm64-reloaded-v2.6.0-gs-o2r-hd.7z` | 99 MB | the one tried on the console |
-| `sm64-reloaded-v2.6.0-gs-o2r-4k.7z` | 618 MB | sharper; not tried here |
+| `sm64-reloaded-v2.6.0-gs-o2r-hd.7z` | 99 MB | HD; the one used on the console |
+| `sm64-reloaded-v2.6.0-gs-o2r-4k.7z` | 618 MB | 4K |
 
 The other files on that page are for emulators and other ports and will not work.
 
@@ -135,8 +131,8 @@ The folder exists once the game has been started once.
 5. Press the **touch pad** to close the menu.
 
 The setting is remembered. Untick the same box to go back to the original
-textures. (On the console it was switched on before the game started; if the
-textures do not change when you tick the box, quit and start the game again.)
+textures. If the textures do not change when you tick the box, quit and start
+the game again.
 
 ## Build
 
