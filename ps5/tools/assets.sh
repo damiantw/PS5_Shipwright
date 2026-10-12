@@ -25,7 +25,7 @@ if [[ ! -f $tools/build.ninja ]]; then
     cmake -S "$game" -B "$tools" -G Ninja -DCMAKE_BUILD_TYPE=Release -DSOH_TOOLS_ONLY=ON \
         > "$tools/configure.log" 2>&1 || { tail -40 "$tools/configure.log" >&2; exit 1; }
 fi
-ninja -C "$tools" GenerateSohOtr > "$tools/build.log" 2>&1 || { tail -40 "$tools/build.log" >&2; exit 1; }
+ninja -C "$tools" GenerateSohOtr soh-torch > "$tools/build.log" 2>&1 || { tail -40 "$tools/build.log" >&2; exit 1; }
 mkdir -p "$app"
 cp "$tools/soh/soh.o2r" "$app/soh.o2r"
 rm -rf "$app/assets"
