@@ -27,11 +27,6 @@ game turns it into its data file on the console the first time you start it.
 
 ## Install
 
-**PS5 Homebrew Catalog (recommended, once listed):** find "Ship of Harkinian" in the
-catalog and install it.
-
-**Manual install:**
-
 1. Download `PPSA99320.zip` from the [Releases](https://github.com/damiantw/PS5_Shipwright/releases) page.
 2. Unzip it. It contains one folder, `PPSA99320`.
 3. Copy that folder to `/data/homebrew/PPSA99320` on the console, using whatever you like:
@@ -57,8 +52,6 @@ that was found but didn't match a supported version is named in the log (`/data/
 
 **Alternative:** make `oot.o2r` on a PC with desktop Ship of Harkinian (or this repo's
 `ps5/tools/assets.sh`) and copy it to `/data/soh/`.
-
-Never share your ROM or an `.o2r` made from it.
 
 ## Data folder
 
@@ -101,20 +94,39 @@ button names, and hides PC-only options.
 
 ## Updating
 
-Install the new version from the Homebrew Catalog, or copy the new `PPSA99320` folder over
+Download the new `PPSA99320.zip` from Releases and copy its `PPSA99320` folder over
 the old one in `/data/homebrew/` (close the game first). Your saves, settings and `oot.o2r`
 in `/data/soh/` stay as they are.
 
+## Mods and texture packs
+
+Ship of Harkinian's mods work on the PS5 as on a PC.
+
+- Put `.o2r` (or older `.otr`) mod files in **`/data/soh/mods/`** (the game creates the
+  folder on first start). Custom music (`.ootrs`) goes there too.
+- A new mod is enabled automatically the next time the game starts. To turn mods on or off or
+  change their order, open the menu (touchpad click) > **Settings > Mod Menu**. Priority is
+  top to bottom: a mod higher in the list overrides the ones below it. Changes apply after a
+  restart (close the game from the PS5 Switcher and start it again).
+- Texture packs that keep their files under `alt/` (most HD packs, for example OoT Reloaded)
+  also need **Enhancements > Graphics > Mods > Use Alternate Assets** turned on.
+- Large HD packs take longer to load scenes, but play at 60 fps.
+
+## Performance
+
+The game renders at 3840x2160 and runs at 60 fps by default (Settings > Graphics > Frame
+Interpolation; 20 is the original N64 rate). Shaders are compiled the first time each one is
+needed and kept in `/data/soh/cache/`, so a scene can stutter briefly the first time you
+visit it and not afterwards.
+
 ## Known issues
 
-- The PS5 system UI (PS button, control center) is very sluggish while the game runs.
-- The home-screen icon can keep showing an old picture after an update. Restart the console
-  or re-register the title in ShadowMountPlus.
-- Graphics menu: "Renderer API" says OpenGL though the game uses Vulkan, and "Allow
-  multi-windows" is a PC option. Leave both alone.
-- In the menu, moving from the sidebar into the right-hand panel with the d-pad is awkward.
-- On the title screen, a button press can reach the game while the menu is open (Cross may
-  open file select).
+- The PS5 system UI (PS button, control center) can be slow to respond while the game runs.
+- In the menu, moving from the sidebar into the right-hand panel with the d-pad can take
+  extra presses.
+- The developer warp screen (Dev Tools > General > Debug mode) shows a black screen.
+- The Select Item page of the pause menu shows the game world behind the item grid instead
+  of the dark background.
 
 ## Troubleshooting
 
@@ -122,7 +134,6 @@ in `/data/soh/` stay as they are.
   start again. Check `/data/soh/logs/Ship of Harkinian.log` for a ROM that was rejected.
 - **Saves or settings seem to reset:** the game probably couldn't use `/data/soh` and fell
   back to its own folder. Make sure it's launched through ShadowMountPlus (or similar).
-- **The menu won't open:** click the touchpad (press it down; a swipe does nothing).
 - **Anything else:** the log is `/data/soh/logs/Ship of Harkinian.log`. Include it when you
   open an [issue](https://github.com/damiantw/PS5_Shipwright/issues).
 
@@ -145,24 +156,29 @@ are kept as patches in `ps5/patches/`; after editing files under `vendor/`, save
 
 Never commit a ROM or an `.o2r` made from one; `.gitignore` blocks them.
 
-## Releasing (PS5 Homebrew Catalog)
+## Releasing
 
 - The version and title id come from `ps5/sce_sys/param.json` (`titleId` PPSA99320,
   `contentVersion` as `NN.NNN.NNN`, starting at `01.000.000`). The build copies that file into
-  the title unchanged. The catalog icon is `ps5/sce_sys/icon0.png` (512x512 PNG).
+  the title unchanged.
 - `bash ps5/tools/release.sh` builds and writes `dist/PPSA99320.zip` (`--no-build` packs the
   last build). The zip has one `PPSA99320/` folder at the top (eboot.bin, sce_sys/,
-  sce_module/, soh.o2r, assets.zip (the extractor recipes, unpacked by the game on first extraction), licenses/), with fixed timestamps. The script refuses ROMs,
-  `oot*.o2r`, saves and settings, checks the finished zip and prints its sha256.
+  sce_module/, soh.o2r, assets.zip with the extractor's recipes, licenses/), with fixed
+  timestamps. The script refuses ROMs, `oot*.o2r`, saves and settings, checks the finished zip
+  and prints its sha256.
 - `soh.o2r` is included on purpose. It holds Ship of Harkinian's own fonts, shaders and
   textures (no Nintendo data), as every upstream SoH release does, and the game can't start
   without it.
-- `catalog/PPSA99320.json` is the draft catalog record. To release:
-  1. Bump `contentVersion` and commit.
-  2. Run `release.sh`.
-  3. Tag that commit with the version and attach the zip to a GitHub release.
-  4. Put the zip's sha256 in the record (`artifact_url` and `icon_url` are already pinned to
-     the tag), then submit it to the catalog.
+- GitHub Actions (`.github/workflows/release.yml`) does the same in CI with the pinned PS5
+  toolchain (cached between runs):
+  1. Bump `contentVersion`, commit and push.
+  2. Push a tag equal to it (`git tag 01.000.001 && git push origin 01.000.001`). The workflow
+     checks that the tag matches, builds, verifies there is no ROM or `oot*.o2r` in the zip,
+     and publishes a release with `PPSA99320.zip` and `PPSA99320.zip.sha256`.
+  3. Running it by hand (Actions > release > Run workflow) builds and checks without
+     publishing anything.
+  Every run also uploads `catalog/PPSA99320.json` filled in with that build's sha256 as an
+  artifact; submitting it anywhere is up to you.
 
 ## Licence
 
