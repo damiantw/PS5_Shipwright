@@ -167,6 +167,10 @@ choose_data_dir(void)
    char path[300];
    snprintf(path, sizeof path, "%s/mods", data_dir);
    mkdir(path, 0777);
+   /* the console has no /tmp: the ROM extractor's scratch files go here */
+   snprintf(path, sizeof path, "%s/.tmp", data_dir);
+   mkdir(path, 0777);
+   setenv("TMPDIR", path, 1);
    say("data folder: %s", data_dir);
 }
 

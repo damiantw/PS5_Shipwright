@@ -1,0 +1,14 @@
+{
+  "id": "PPSA99320",
+  "kind": "app",
+  "name": "Ship of Harkinian",
+  "title_id": "PPSA99320",
+  "author": "damiantw",
+  "license": "GPL-3.0",
+  "description": "PC port of Ocarina of Time (Shipwright) for the PS5. Bring your own ROM: copy it to /data/soh/ and launch; the game archive is built on the console.",
+  "source_repo": "https://github.com/damiantw/PS5_Shipwright",
+  "version": "01.000.000",
+  "artifact_url": "https://github.com/damiantw/PS5_Shipwright/releases/download/01.000.000/PPSA99320.zip",
+  "sha256": "TO-FILL-FROM-ps5/tools/release.sh-OUTPUT",
+  "icon_url": "https://raw.githubusercontent.com/damiantw/PS5_Shipwright/01.000.000/ps5/sce_sys/icon0.png"
+}

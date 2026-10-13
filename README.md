@@ -145,6 +145,25 @@ are kept as patches in `ps5/patches/`; after editing files under `vendor/`, save
 
 Never commit a ROM or an `.o2r` made from one; `.gitignore` blocks them.
 
+## Releasing (PS5 Homebrew Catalog)
+
+- The version and title id come from `ps5/sce_sys/param.json` (`titleId` PPSA99320,
+  `contentVersion` as `NN.NNN.NNN`, starting at `01.000.000`). The build copies that file into
+  the title unchanged. The catalog icon is `ps5/sce_sys/icon0.png` (512x512 PNG).
+- `bash ps5/tools/release.sh` builds and writes `dist/PPSA99320.zip` (`--no-build` packs the
+  last build). The zip has one `PPSA99320/` folder at the top (eboot.bin, sce_sys/,
+  sce_module/, soh.o2r, assets/, licenses/), with fixed timestamps. The script refuses ROMs,
+  `oot*.o2r`, saves and settings, checks the finished zip and prints its sha256.
+- `soh.o2r` is included on purpose. It holds Ship of Harkinian's own fonts, shaders and
+  textures (no Nintendo data), as every upstream SoH release does, and the game can't start
+  without it.
+- `catalog/PPSA99320.json` is the draft catalog record. To release:
+  1. Bump `contentVersion` and commit.
+  2. Run `release.sh`.
+  3. Tag that commit with the version and attach the zip to a GitHub release.
+  4. Put the zip's sha256 in the record (`artifact_url` and `icon_url` are already pinned to
+     the tag), then submit it to the catalog.
+
 ## Licence
 
 GPL-3.0. See [LICENSING.md](LICENSING.md).
