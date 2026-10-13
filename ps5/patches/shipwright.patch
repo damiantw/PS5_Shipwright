@@ -165,7 +165,7 @@ index e3a387749..497af0092 100644
      }
  
 diff --git a/soh/soh/OTRGlobals.cpp b/soh/soh/OTRGlobals.cpp
-index d336c3c5b..37c2c0318 100644
+index d336c3c5b..59db6dee9 100644
 --- a/soh/soh/OTRGlobals.cpp
 +++ b/soh/soh/OTRGlobals.cpp
 @@ -123,11 +123,21 @@
@@ -190,7 +190,7 @@ index d336c3c5b..37c2c0318 100644
  
  bool SoH_HandleConfigDrop(char* filePath);
  
-@@ -330,7 +340,32 @@ OTRGlobals::OTRGlobals() {
+@@ -330,7 +340,41 @@ OTRGlobals::OTRGlobals() {
      }
  
      previousImGuiScaleIndex = -1;
@@ -209,6 +209,15 @@ index d336c3c5b..37c2c0318 100644
 +        CVarSetInteger(CVAR_SETTING("PS5.MenuDefaults"), 2);
 +        CVarSave();
 +    }
++    // version 3: 60 fps frame interpolation (the console holds it at 4K); a config
++    // that chose something other than the 20 default keeps its choice
++    if (CVarGetInteger(CVAR_SETTING("PS5.MenuDefaults"), 0) < 3) {
++        if (CVarGetInteger(CVAR_SETTING("InterpolationFPS"), 20) == 20) {
++            CVarSetInteger(CVAR_SETTING("InterpolationFPS"), 60);
++        }
++        CVarSetInteger(CVAR_SETTING("PS5.MenuDefaults"), 3);
++        CVarSave();
++    }
 +    {
 +        // more room around every item: a pad moves by item, and a TV is read from afar
 +        ImGuiStyle& style = ImGui::GetStyle();
@@ -223,7 +232,7 @@ index d336c3c5b..37c2c0318 100644
      ScaleImGui();
  }
  
-@@ -587,6 +622,17 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -587,6 +631,17 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
              case ES_EXTRACT_ARGS: {
  #if !defined(__SWITCH__) && !defined(__WIIU__)
                  if (args.empty()) {
@@ -241,7 +250,7 @@ index d336c3c5b..37c2c0318 100644
                      SohGui::RegisterPopup(
                          "Run Ship of Harkinian", "All files have been processed. Run SoH?", "Yes", "No",
                          [&]() {
-@@ -644,6 +690,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -644,6 +699,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                              std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs("oot.o2r", appShortName));
  
                          if (!ootO2RExists) {
@@ -253,7 +262,7 @@ index d336c3c5b..37c2c0318 100644
                              SohGui::RegisterPopup(
                                  "No O2R Files", "No O2R files found. Generate one now?", "Yes", "No",
                                  [&]() { promptStep = PS_LOCAL; }, [&]() { exit(0); });
-@@ -661,6 +712,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -661,6 +721,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                              extract.GetRoms(args);
                          }
                          if (!args.empty()) {
@@ -267,7 +276,7 @@ index d336c3c5b..37c2c0318 100644
                              promptStep = PS_WAIT;
                              SohGui::RegisterPopup(
                                  "ROMs found", "ROMs found in application directory. Would you like to process them?",
-@@ -672,6 +730,20 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -672,6 +739,20 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                          continue;
                      }
                      case PS_FIRST: {
@@ -288,7 +297,7 @@ index d336c3c5b..37c2c0318 100644
                          if (!extract.ManuallySearchForRomMatchingType(RomSearchMode::Both)) {
                              promptStep = PS_FILE_CHECK;
                              continue;
-@@ -1007,7 +1079,11 @@ void OTRGlobals::ScaleImGui() {
+@@ -1007,7 +1088,11 @@ void OTRGlobals::ScaleImGui() {
      float scale = imguiScaleOptionToValue[imGuiScaleIndex];
      float newScale = scale / previousImGuiScale;
      ImGui::GetStyle().ScaleAllSizes(newScale);
@@ -300,7 +309,7 @@ index d336c3c5b..37c2c0318 100644
      previousImGuiScale = scale;
      previousImGuiScaleIndex = imGuiScaleIndex;
  }
-@@ -1897,6 +1973,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
+@@ -1897,6 +1982,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
  std::map<std::string, SoundFontSample*> cachedCustomSFs;
  
  ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool isJapaneseFont) {
