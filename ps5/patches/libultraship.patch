@@ -987,10 +987,10 @@ index 3eb09961..dee9af43 100644
  } // namespace Fast
 diff --git a/include/fast/backends/gfx_vulkan.h b/include/fast/backends/gfx_vulkan.h
 new file mode 100644
-index 00000000..0983f742
+index 00000000..caf0b1b3
 --- /dev/null
 +++ b/include/fast/backends/gfx_vulkan.h
-@@ -0,0 +1,350 @@
+@@ -0,0 +1,361 @@
 +//
 +//  gfx_vulkan.h
 +//  libultraship
@@ -1014,6 +1014,8 @@ index 00000000..0983f742
 +#endif
 +#include <unordered_map>
 +#include <vector>
++#include <atomic>
++#include <string>
 +#include <map>
 +
 +struct SDL_Window;
@@ -1139,6 +1141,12 @@ index 00000000..0983f742
 +class GfxRenderingAPIVK final : public GfxRenderingAPI {
 +  public:
 +    ~GfxRenderingAPIVK() override = default;
++#ifdef __PROSPERO__
++    // PS5 shader warm-up: GLSL -> SPIR-V for the listed combiner keys into the disk cache
++    // (no Vulkan objects; safe on a worker thread). Salt = what else the GLSL depends on.
++    void Ps5PrecompileShaders(const std::vector<std::pair<uint64_t, uint64_t>>& keys, std::atomic<size_t>* done);
++    std::string Ps5PrecompileSalt() const;
++#endif
 +    const char* GetName() override;
 +    int GetMaxTextureSize() override;
 +    GfxClipParameters GetClipParameters() override;
@@ -1336,6 +1344,9 @@ index 00000000..0983f742
 +    bool mImGuiInitialized = false;
 +};
 +
++#ifdef __PROSPERO__
++extern GfxRenderingAPIVK* gPs5VkApi;
++#endif
 +} // namespace Fast
 +
 +bool Vulkan_IsSupported();
@@ -3638,10 +3649,10 @@ index 15c5415f..6f2942ff 100644
          if (mVsyncEnabled) {
 diff --git a/src/fast/backends/gfx_vulkan.cpp b/src/fast/backends/gfx_vulkan.cpp
 new file mode 100644
-index 00000000..acd2cd3a
+index 00000000..d5564a0f
 --- /dev/null
 +++ b/src/fast/backends/gfx_vulkan.cpp
-@@ -0,0 +1,2613 @@
+@@ -0,0 +1,2681 @@
 +//
 +//  gfx_vulkan.cpp
 +//  libultraship
@@ -3676,6 +3687,8 @@ index 00000000..acd2cd3a
 +#endif
 +
 +#include <vector>
++#include <mutex>
++#include <set>
 +#include <algorithm>
 +#include <cstring>
 +
@@ -3989,6 +4002,8 @@ index 00000000..acd2cd3a
 +#endif
 +static std::vector<uint32_t> CompileGlslToSpirv(const std::string& source, bool vertex) {
 +#ifdef __PROSPERO__
++    static std::mutex compileMutex; // the warm-up worker and the renderer can both get here
++    std::lock_guard<std::mutex> lock(compileMutex);
 +    const uint64_t t0 = SDL_GetPerformanceCounter();
 +    uint64_t h = 1469598103934665603ull ^ (vertex ? 0x76 : 0x66);
 +    for (unsigned char c : source) { h ^= c; h *= 1099511628211ull; }
@@ -4875,6 +4890,9 @@ index 00000000..acd2cd3a
 +}
 +
 +void GfxRenderingAPIVK::Init() {
++#ifdef __PROSPERO__
++    gPs5VkApi = this;
++#endif
 +    // fb 0 represents the swapchain
 +    CreateFramebuffer();
 +    RebuildScreenFramebuffer();
@@ -4893,7 +4911,55 @@ index 00000000..acd2cd3a
 +    }
 +}
 +
++#ifdef __PROSPERO__
++GfxRenderingAPIVK* gPs5VkApi = nullptr;
++
++// every combiner key the game asks for is appended (once) to <data>/cache/shader_keys.txt;
++// those lists are merged into ps5/shader_keys.txt, which ships so the warm-up can compile them
++static void Ps5LogShaderKey(uint64_t id0, uint64_t id1) {
++    static std::mutex m;
++    static std::set<std::pair<uint64_t, uint64_t>> seen;
++    static bool loaded = false;
++    std::lock_guard<std::mutex> lock(m);
++    const std::string path = Ps5CacheDir() + "/shader_keys.txt";
++    if (!loaded) {
++        loaded = true;
++        if (FILE* f = fopen(path.c_str(), "r")) {
++            unsigned long long a, b;
++            while (fscanf(f, "%llx %llx", &a, &b) == 2) seen.insert({ a, b });
++            fclose(f);
++        }
++    }
++    if (!seen.insert({ id0, id1 }).second) return;
++    if (FILE* f = fopen(path.c_str(), "a")) {
++        fprintf(f, "%016llx %016llx\n", (unsigned long long)id0, (unsigned long long)id1);
++        fclose(f);
++    }
++}
++
++std::string GfxRenderingAPIVK::Ps5PrecompileSalt() const {
++    return std::string("glsl-v1 filter=") + std::to_string((int)mCurrentFilterMode) + " srgb=" +
++           std::to_string((int)mSrgbMode);
++}
++
++void GfxRenderingAPIVK::Ps5PrecompileShaders(const std::vector<std::pair<uint64_t, uint64_t>>& keys,
++                                             std::atomic<size_t>* done) {
++    const uint64_t t0 = SDL_GetPerformanceCounter();
++    for (auto& [id0, id1] : keys) {
++        CCFeatures cc;
++        gfx_cc_get_features(id0, id1, &cc);
++        CompileGlslToSpirv(BuildVulkanShader(cc, true, mCurrentFilterMode == FILTER_THREE_POINT, mSrgbMode), true);
++        CompileGlslToSpirv(BuildVulkanShader(cc, false, mCurrentFilterMode == FILTER_THREE_POINT, mSrgbMode), false);
++        if (done != nullptr) (*done)++;
++    }
++    SPDLOG_INFO("perf: shader warm-up {} programs in {:.0f} ms", keys.size(), Ps5Ms(t0));
++}
++#endif
++
 +ShaderProgram* GfxRenderingAPIVK::CreateAndLoadNewShader(uint64_t shaderId0, uint64_t shaderId1) {
++#ifdef __PROSPERO__
++    Ps5LogShaderKey(shaderId0, shaderId1);
++#endif
 +    CCFeatures cc_features;
 +    gfx_cc_get_features(shaderId0, shaderId1, &cc_features);
 +
@@ -6254,6 +6320,19 @@ index 00000000..acd2cd3a
 +    return true;
 +}
 +
++#endif
++
++#ifdef __PROSPERO__
++// called by SoH's start-up warm-up screen (soh/OTRGlobals.cpp) without Vulkan headers
++bool Ps5ShaderWarmupAvailable() {
++    return Fast::gPs5VkApi != nullptr;
++}
++std::string Ps5ShaderWarmupSalt() {
++    return Fast::gPs5VkApi != nullptr ? Fast::gPs5VkApi->Ps5PrecompileSalt() : std::string();
++}
++void Ps5ShaderWarmup(const std::vector<std::pair<uint64_t, uint64_t>>& keys, std::atomic<size_t>* done) {
++    if (Fast::gPs5VkApi != nullptr) Fast::gPs5VkApi->Ps5PrecompileShaders(keys, done);
++}
 +#endif
 diff --git a/src/fast/interpreter.cpp b/src/fast/interpreter.cpp
 index 17b85369..3ed406d0 100644

@@ -155,6 +155,8 @@ for asset in icon0.png pic0.dds pic1.dds snd0.at9; do
 done
 (cd "$vulkan/runtime" && sha256sum --check --strict --quiet libc.prx.sha256)
 cp "$vulkan/runtime/libc.prx" "$app/sce_module/libc.prx"
+# combiner keys (IDs only) the start-up warm-up compiles into /data/soh/cache; see ps5/shader_keys.txt
+if [[ -f $ps5/shader_keys.txt ]]; then cp "$ps5/shader_keys.txt" "$app/shader_keys.txt"; fi
 mv "$work/eboot.elf.new" "$work/eboot.elf"
 # The linked ELF of the title last packaged, for tools/run.sh to symbolise a crash with
 # (the game's build tree may be on the VM's own disk)

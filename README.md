@@ -43,7 +43,7 @@ game turns it into its data file on the console the first time you start it.
 
 When there is no `oot.o2r` or `oot-mq.o2r` in `/data/soh/`, the game looks for ROMs there,
 checks each one against the versions Ship of Harkinian supports, and converts it on the
-console with a progress bar (a few minutes). The result, `oot.o2r` (and `oot-mq.o2r`), is
+console with a progress bar (about 30 seconds). The result, `oot.o2r` (and `oot-mq.o2r`), is
 saved in `/data/soh/` and the game starts. Later launches skip this step. You can delete the
 ROM afterwards.
 
@@ -117,8 +117,11 @@ Ship of Harkinian's mods work on the PS5 as on a PC.
 
 The game renders at 3840x2160 and runs at 60 fps by default (Settings > Graphics > Frame
 Interpolation; 20 is the original N64 rate). Shaders are compiled the first time each one is
-needed and kept in `/data/soh/cache/`, so a scene can stutter briefly the first time you
-visit it and not afterwards.
+needed and kept in `/data/soh/cache/`. On first launch, and after each update, a short
+"Preparing Shaders" screen (about 2 seconds) compiles the common ones on the console from a
+list of shader keys that ships with the game (`shader_keys.txt`; it contains no compiled
+code). Shaders not on the list are still compiled when first needed, so a rarely seen
+effect can stutter once and not afterwards.
 
 ## Known issues
 
