@@ -987,10 +987,10 @@ index 3eb09961..dee9af43 100644
  } // namespace Fast
 diff --git a/include/fast/backends/gfx_vulkan.h b/include/fast/backends/gfx_vulkan.h
 new file mode 100644
-index 00000000..ca303bf1
+index 00000000..50c19d2c
 --- /dev/null
 +++ b/include/fast/backends/gfx_vulkan.h
-@@ -0,0 +1,345 @@
+@@ -0,0 +1,347 @@
 +//
 +//  gfx_vulkan.h
 +//  libultraship
@@ -1223,6 +1223,8 @@ index 00000000..ca303bf1
 +        std::vector<VkImageView> garbageViews;
 +        std::vector<VkBuffer> garbageBuffers;
 +        std::vector<VkDeviceMemory> garbageMemory;
++        // command buffers allocated from commandPool this frame; freed once its fence signals
++        std::vector<VkCommandBuffer> commandBuffers;
 +    };
 +
 +    uint32_t FindMemoryType(uint32_t typeBits, VkMemoryPropertyFlags props);
@@ -3633,10 +3635,10 @@ index 15c5415f..6f2942ff 100644
          if (mVsyncEnabled) {
 diff --git a/src/fast/backends/gfx_vulkan.cpp b/src/fast/backends/gfx_vulkan.cpp
 new file mode 100644
-index 00000000..e43949d0
+index 00000000..cadbfc03
 --- /dev/null
 +++ b/src/fast/backends/gfx_vulkan.cpp
-@@ -0,0 +1,2450 @@
+@@ -0,0 +1,2460 @@
 +//
 +//  gfx_vulkan.cpp
 +//  libultraship
@@ -4200,6 +4202,7 @@ index 00000000..e43949d0
 +    ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 +    ai.commandBufferCount = 1;
 +    VK_CHECK(vkAllocateCommandBuffers(mDevice, &ai, &mUploadCmd));
++    mFrames[mFrameSlot].commandBuffers.push_back(mUploadCmd);
 +    VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 +    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 +    VK_CHECK(vkBeginCommandBuffer(mUploadCmd, &bi));
@@ -4662,6 +4665,14 @@ index 00000000..e43949d0
 +        slot.fenceInFlight = false;
 +    }
 +    CollectGarbage(slot);
++    // vkResetCommandPool recycles but does not free: without this every frame's
++    // command buffers stay allocated and the pool grows until allocation fails
++    // (vkBeginCommandBuffer -1 / vkEndCommandBuffer -2 after a few hours).
++    if (!slot.commandBuffers.empty()) {
++        vkFreeCommandBuffers(mDevice, slot.commandPool, (uint32_t)slot.commandBuffers.size(),
++                             slot.commandBuffers.data());
++        slot.commandBuffers.clear();
++    }
 +    VK_CHECK(vkResetCommandPool(mDevice, slot.commandPool, 0));
 +    VK_CHECK(vkResetDescriptorPool(mDevice, slot.descriptorPool, 0));
 +
@@ -5359,6 +5370,7 @@ index 00000000..e43949d0
 +        ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 +        ai.commandBufferCount = 1;
 +        VK_CHECK(vkAllocateCommandBuffers(mDevice, &ai, &fb.mCommandBuffer));
++        mFrames[mFrameSlot].commandBuffers.push_back(fb.mCommandBuffer);
 +        VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 +        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 +        VK_CHECK(vkBeginCommandBuffer(fb.mCommandBuffer, &bi));
