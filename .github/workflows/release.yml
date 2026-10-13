@@ -108,6 +108,11 @@ jobs:
           git -C PS5_Mesa checkout -q "$PS5_MESA_REV"
           bash PS5_Vulkan/tools/build-radv.sh release
 
+      - name: libc.prx (PS5_Vulkan clean-room runtime, checksum-verified)
+        run: |
+          [ -f PS5_Vulkan/runtime/libc.prx ] || bash PS5_Vulkan/tools/rebuild-libc.sh
+          (cd PS5_Vulkan/runtime && sha256sum --check --strict libc.prx.sha256)
+
       - name: Build
         working-directory: PS5_Shipwright
         run: |
