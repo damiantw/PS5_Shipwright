@@ -152,7 +152,7 @@ Never commit a ROM or an `.o2r` made from one; `.gitignore` blocks them.
   the title unchanged. The catalog icon is `ps5/sce_sys/icon0.png` (512x512 PNG).
 - `bash ps5/tools/release.sh` builds and writes `dist/PPSA99320.zip` (`--no-build` packs the
   last build). The zip has one `PPSA99320/` folder at the top (eboot.bin, sce_sys/,
-  sce_module/, soh.o2r, assets/, licenses/), with fixed timestamps. The script refuses ROMs,
+  sce_module/, soh.o2r, assets.zip (the extractor recipes, unpacked by the game on first extraction), licenses/), with fixed timestamps. The script refuses ROMs,
   `oot*.o2r`, saves and settings, checks the finished zip and prints its sha256.
 - `soh.o2r` is included on purpose. It holds Ship of Harkinian's own fonts, shaders and
   textures (no Nintendo data), as every upstream SoH release does, and the game can't start

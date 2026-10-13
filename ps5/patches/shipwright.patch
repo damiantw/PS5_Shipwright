@@ -91,7 +91,7 @@ index baf3dc261..82cb18d59 100644
  #endif
  }
 diff --git a/soh/soh/Extractor/Extract.cpp b/soh/soh/Extractor/Extract.cpp
-index 89da6e1b7..c26a027e2 100644
+index 89da6e1b7..44a7cb1e9 100644
 --- a/soh/soh/Extractor/Extract.cpp
 +++ b/soh/soh/Extractor/Extract.cpp
 @@ -622,8 +622,19 @@ const char* Extractor::GetTorchVersionDir() const {
@@ -114,7 +114,102 @@ index 89da6e1b7..c26a027e2 100644
  
      // create 6 random alphanumeric characters
      static const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-@@ -655,7 +666,13 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+@@ -639,6 +650,79 @@ std::string Extractor::Mkdtemp() {
+     return tmppath;
+ }
+ 
++#ifdef __PROSPERO__
++#include <zip.h>
++#include <sys/stat.h>
++// PS5: the extractor's recipes can ship as one assets.zip beside eboot.bin (thousands of
++// small files are slow to copy to a console). Unpacked once into <exportdir>/assets, stamped
++// with the zip's size and time; returns that folder, or "" when there is no zip.
++static std::string Ps5UnpackAssetsZip(const std::string& installPath, const std::string& exportdir) {
++    const std::string zipPath = installPath + "/assets.zip";
++    struct stat st;
++    if (stat(zipPath.c_str(), &st) != 0) {
++        return "";
++    }
++    const std::string outDir = exportdir + "/assets";
++    const std::string stampPath = outDir + "/.zipstamp";
++    char stamp[64];
++    snprintf(stamp, sizeof(stamp), "%lld %lld", (long long)st.st_size, (long long)st.st_mtime);
++    {
++        std::ifstream in(stampPath);
++        std::string have;
++        std::getline(in, have);
++        if (have == stamp) {
++            return outDir;
++        }
++    }
++    int err = 0;
++    zip_t* zip = zip_open(zipPath.c_str(), ZIP_RDONLY, &err);
++    if (zip == nullptr) {
++        fprintf(stderr, "extractor: cannot open %s (%d)\n", zipPath.c_str(), err);
++        return "";
++    }
++    std::error_code ec;
++    std::filesystem::remove_all(outDir, ec);
++    std::filesystem::create_directories(outDir, ec);
++    const zip_int64_t n = zip_get_num_entries(zip, 0);
++    std::vector<char> buf(1 << 16);
++    zip_int64_t files = 0;
++    for (zip_int64_t i = 0; i < n; i++) {
++        const char* name = zip_get_name(zip, i, 0);
++        if (name == nullptr || strstr(name, "..") != nullptr) {
++            continue;
++        }
++        std::string rel = name;
++        if (rel.rfind("assets/", 0) == 0) {
++            rel = rel.substr(7); // the zip may hold assets/ at its top
++        }
++        if (rel.empty()) {
++            continue;
++        }
++        const std::filesystem::path dst = std::filesystem::path(outDir) / rel;
++        if (rel.back() == '/') {
++            std::filesystem::create_directories(dst, ec);
++            continue;
++        }
++        std::filesystem::create_directories(dst.parent_path(), ec);
++        zip_file_t* zf = zip_fopen_index(zip, i, 0);
++        FILE* out = fopen(dst.string().c_str(), "wb");
++        if (zf != nullptr && out != nullptr) {
++            zip_int64_t got;
++            while ((got = zip_fread(zf, buf.data(), buf.size())) > 0) {
++                fwrite(buf.data(), 1, (size_t)got, out);
++            }
++            files++;
++        }
++        if (out != nullptr) fclose(out);
++        if (zf != nullptr) zip_fclose(zf);
++    }
++    zip_close(zip);
++    std::ofstream(stampPath) << stamp << "\n";
++    fprintf(stderr, "extractor: unpacked %lld files from %s into %s\n", (long long)files, zipPath.c_str(), outDir.c_str());
++    return outDir;
++}
++#endif
++
+ static void MessageboxWorker();
+ 
+ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::atomic<size_t>* extractCount,
+@@ -648,6 +732,14 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+ 
+     std::string srcDir = std::filesystem::absolute(installPath).string() + "/assets";
+     exportdir = std::filesystem::absolute(exportdir).string();
++#ifdef __PROSPERO__
++    {
++        std::string unpacked = Ps5UnpackAssetsZip(std::filesystem::absolute(installPath).string(), exportdir);
++        if (!unpacked.empty()) {
++            srcDir = unpacked;
++        }
++    }
++#endif
+     // Work this out in the temporary folder
+     std::string tempdir = Mkdtemp();
+ 
+@@ -655,7 +747,13 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
      *extractCount = 0;
  
      // config.yml decides whether this is oot.o2r or oot-mq.o2r.

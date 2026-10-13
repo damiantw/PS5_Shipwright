@@ -28,8 +28,23 @@ fi
 ninja -C "$tools" GenerateSohOtr soh-torch > "$tools/build.log" 2>&1 || { tail -40 "$tools/build.log" >&2; exit 1; }
 mkdir -p "$app"
 cp "$tools/soh/soh.o2r" "$app/soh.o2r"
-rm -rf "$app/assets"
-cp -R "$game/soh/assets/yml" "$app/assets"
+# the extractor's recipes as one assets.zip (thousands of small files copy slowly to a
+# console); the game unpacks it into its data folder on the first extraction after a change
+rm -rf "$app/assets" "$app/assets.zip"
+python3 - "$game/soh/assets/yml" "$app/assets.zip" <<'PY'
+import os, sys, zipfile
+src, out = sys.argv[1:3]
+with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+    for base, dirs, files in os.walk(src):
+        dirs.sort()
+        for name in sorted(files):
+            path = os.path.join(base, name)
+            info = zipfile.ZipInfo(os.path.relpath(path, src), (1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            z.writestr(info, open(path, "rb").read())
+PY
+printf '==> %s (%s bytes)\n' "$app/assets.zip" "$(stat -c %s "$app/assets.zip")"
 printf '==> %s (%s bytes)\n' "$app/soh.o2r" "$(stat -c %s "$app/soh.o2r")"
 
 if [[ $# -ge 1 ]]; then

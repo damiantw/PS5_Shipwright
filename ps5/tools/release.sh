@@ -7,7 +7,7 @@
 # The zip holds one folder, PPSA99320/, at its top level, as the console takes it:
 # eboot.bin, sce_sys/ (param.json and the art, exactly ps5/sce_sys/), sce_module/,
 # soh.o2r (Ship of Harkinian's own fonts, shaders and textures, shipped in every
-# upstream release), assets/ (the extractor's recipes, no game data) and licenses/.
+# upstream release), assets.zip (the extractor's recipes, no game data) and licenses/.
 # No ROM and no game archive (oot.o2r, oot-mq.o2r) or other Nintendo data: the
 # script refuses if one is in the folder, and checks the zip afterwards.
 # It prints the zip's sha256 for catalog/PPSA99320.json.
@@ -23,7 +23,7 @@ version=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["conte
 [[ ${1:-} == --no-build ]] || "$ps5/tools/build.sh"
 app="$root/dist/$title_id"
 for file in eboot.bin sce_sys/param.json sce_sys/icon0.png sce_sys/pic0.dds sce_sys/pic1.dds sce_module/libc.prx \
-        soh.o2r assets/config.yml; do
+        soh.o2r assets.zip; do
     [[ -e $app/$file ]] || { echo "missing $app/$file: run ps5/tools/build.sh" >&2; exit 2; }
 done
 for file in param.json icon0.png pic0.dds pic1.dds; do
@@ -61,8 +61,12 @@ tops = {n.split("/")[0] for n in names}
 assert tops == {title}, f"top level is {sorted(tops)}, not {title}/"
 bad = [n for n in names if forbidden.search(n.rstrip("/"))]
 assert not bad, f"forbidden entries: {bad[:5]}"
-for need in ("eboot.bin", "sce_sys/param.json", "sce_sys/icon0.png", "soh.o2r"):
+for need in ("eboot.bin", "sce_sys/param.json", "sce_sys/icon0.png", "soh.o2r", "assets.zip"):
     assert f"{title}/{need}" in names, f"{need} missing"
+inner = zipfile.ZipFile(zipfile.ZipFile(out).open(f"{title}/assets.zip")).namelist()
+assert "config.yml" in inner, "assets.zip has no config.yml"
+bad = [n for n in inner if forbidden.search(n.rstrip("/"))]
+assert not bad, f"forbidden entries in assets.zip: {bad[:5]}"
 print(f"checked: {len(names)} entries under {title}/, no ROM or game archive")
 PY
 printf '==> %s (%s bytes, contentVersion %s)\n' "$out" "$(stat -c %s "$out")" "$version"
