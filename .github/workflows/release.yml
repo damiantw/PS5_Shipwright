@@ -85,6 +85,12 @@ jobs:
 
       - name: PS5_Vulkan native deps and host tool
         run: |
+          # zlib.net can refuse CI runners; the same tarball from zlib's GitHub release
+          # (the setup script still checks its sha256)
+          mkdir -p PS5_Vulkan/.deps/native/zlib
+          [ -f PS5_Vulkan/.deps/native/zlib/zlib-1.3.2.tar.gz ] ||
+            curl -fsSL -o PS5_Vulkan/.deps/native/zlib/zlib-1.3.2.tar.gz \
+              https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
           bash PS5_Vulkan/tools/setup-native-dependencies.sh
           zroot=PS5_Vulkan/.deps/native/zlib/root
           native=PS5_Vulkan/tooling/native
