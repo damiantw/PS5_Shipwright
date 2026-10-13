@@ -84,7 +84,7 @@ Options is Start and the right stick is the C buttons. You can remap everything 
 | Button | Action |
 | --- | --- |
 | Touchpad click | open / close the menu |
-| D-pad / left stick | move between items (amber frame shows focus) |
+| D-pad / left stick | move between items, across the tab row, sidebar and page (amber frame shows focus) |
 | Cross | select / enter |
 | Circle | back; closes the menu when nothing is selected |
 | L1 / R1 | previous / next top tab |
