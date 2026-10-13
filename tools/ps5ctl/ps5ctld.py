@@ -68,7 +68,7 @@ def _avs_handle(self, packet):
         del st["frames"][old]; self._lost += 1
 AVStream.handle = _avs_handle
 
-# Tailscale MTU is 1280: big video packets get dropped unless we cap the negotiated MTU
+# VPN links (e.g. MTU 1280): big video packets get dropped unless we cap the negotiated MTU
 _orig_ss = Session._start_stream
 def _start_stream(self, test=True, mtu=None, rtt=None):
     if not test:
@@ -78,8 +78,18 @@ def _start_stream(self, test=True, mtu=None, rtt=None):
 Session._start_stream = _start_stream
 
 SOCK = os.environ.get("PS5CTL_SOCK", "/tmp/ps5ctl.sock")
-HOST = os.environ.get("PS5_HOST", "192.168.1.70")
-USER = os.environ.get("PS5_USER", "beersnbits")
+def _cfg():
+    import json, pathlib
+    p = pathlib.Path(os.environ.get("PS5CTL_CONFIG", pathlib.Path.home() / ".config/ps5ctl/config.json"))
+    try:
+        return json.loads(p.read_text())
+    except FileNotFoundError:
+        return {}
+_C = _cfg()
+HOST = os.environ.get("PS5_HOST") or _C.get("host")
+USER = os.environ.get("PS5_USER") or _C.get("psn_online_id")
+if not HOST or not USER:
+    sys.exit("ps5ctld: set PS5_HOST and PS5_USER (PSN online ID in ~/.pyremoteplay/.profile.json), or host/psn_online_id in ~/.config/ps5ctl/config.json")
 logging.basicConfig(level=getattr(logging, os.environ.get("PS5CTL_LOG","INFO")), format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("ps5ctld")
 ALIAS = {"X": "CROSS", "O": "CIRCLE", "TRI": "TRIANGLE", "SQ": "SQUARE", "START": "OPTIONS", "CREATE": "SHARE"}

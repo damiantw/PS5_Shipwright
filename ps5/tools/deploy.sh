@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ship of Harkinian for the PlayStation 5 - upload dist/<TITLE_ID>/ to the console.
 #
-#   PS5_HOST=192.168.1.70 ps5/tools/deploy.sh [--all]
+#   PS5_HOST=<console-ip> ps5/tools/deploy.sh [--all]
 #
 # Uses PS5_Vulkan's deploy tool (it refuses while the title runs) when its
 # ps5vkctl helper answers on port 9111; otherwise plain FTP on port 2121

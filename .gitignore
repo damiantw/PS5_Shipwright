@@ -13,3 +13,9 @@ oot*.o2r
 userdata/
 game/
 *.o2r
+
+# local ps5ctl / Remote Play config and credentials
+.config/ps5ctl/
+ps5ctl.json
+.profile.json
+mkprofile.py
