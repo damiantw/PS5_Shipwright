@@ -18,6 +18,10 @@ trees=(shipwright:"$game" libultraship:"$game/libultraship" torch:"$game/torch")
 
 if [[ ${1:-} == --save ]]; then
     for entry in "${trees[@]}"; do
+        # new files the console adds (the Vulkan backend, its shaders) are untracked
+        # in the upstream tree: mark them intent-to-add so the diff carries them
+        git -C "${entry#*:}" ls-files -z --others --exclude-standard -- . ':!properties.h' ':!src/port/build.c' |
+            xargs -0 -r git -C "${entry#*:}" add --intent-to-add --
         # generated at configure time, never the console's change
         git -C "${entry#*:}" diff --ignore-submodules -- . ':!properties.h' ':!src/port/build.c' > "$root/ps5/patches/${entry%%:*}.patch"
     done
