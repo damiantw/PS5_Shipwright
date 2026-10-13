@@ -10939,10 +10939,10 @@ index 8235c8ad..9eb40462 100644
  
      loader.Init(temp);
 diff --git a/src/ship/window/gui/Gui.cpp b/src/ship/window/gui/Gui.cpp
-index 1f9279bd..e1c0f625 100644
+index 1f9279bd..265773fd 100644
 --- a/src/ship/window/gui/Gui.cpp
 +++ b/src/ship/window/gui/Gui.cpp
-@@ -1,5 +1,13 @@
+@@ -1,5 +1,14 @@
  #define NOMINMAX
  
 +#ifdef __PROSPERO__
@@ -10951,12 +10951,13 @@ index 1f9279bd..e1c0f625 100644
 +#include <imgui_impl_sdl2.h>
 +#include <imgui_internal.h>
 +#include <SDL2/SDL.h>
++#include "ship/controller/controldeck/ControlDeck.h"
 +#include <spdlog/spdlog.h>
 +#endif
  #include "ship/window/gui/Gui.h"
  
  #include <cstring>
-@@ -226,12 +234,50 @@ void Gui::DrawMenu() {
+@@ -226,12 +235,50 @@ void Gui::DrawMenu() {
  
      ImGui::DockSpace(dockId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None | ImGuiDockNodeFlags_NoDockingInCentralNode);
  
@@ -11010,7 +11011,7 @@ index 1f9279bd..e1c0f625 100644
                     GetMenuBar()) {
              GetMenuBar()->ToggleVisibility();
          }
-@@ -243,6 +289,45 @@ void Gui::DrawMenu() {
+@@ -243,6 +290,70 @@ void Gui::DrawMenu() {
              mImGuiIo->ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
          }
      }
@@ -11045,6 +11046,31 @@ index 1f9279bd..e1c0f625 100644
 +                GetMenuBar()->ToggleVisibility();
 +            }
 +        }
++        // the game sees nothing of the pad while the menu is open, and after it closes not
++        // until every button is up: the press that closed it (Circle, Cross on an item, the
++        // touch pad) must not land in the game, e.g. Cross opening file select on the title
++        {
++            static const int32_t kMenuInputBlock = 0x50533501;
++            static bool blocking = false;
++            bool anyDown = false;
++            for (int i = 0; i < SDL_NumJoysticks() && !anyDown; i++) {
++                SDL_GameController* pad = SDL_GameControllerFromPlayerIndex(i);
++                if (pad == nullptr && SDL_IsGameController(i)) {
++                    pad = SDL_GameControllerFromInstanceID(SDL_JoystickGetDeviceInstanceID(i));
++                }
++                for (int b = 0; pad != nullptr && b < SDL_CONTROLLER_BUTTON_MAX && !anyDown; b++) {
++                    anyDown = SDL_GameControllerGetButton(pad, (SDL_GameControllerButton)b) != 0;
++                }
++            }
++            auto deck = Ship::Context::GetRawInstance()->GetControlDeck();
++            if (nav && !blocking && deck != nullptr) {
++                deck->BlockGameInput(kMenuInputBlock);
++                blocking = true;
++            } else if (!nav && blocking && !anyDown && deck != nullptr) {
++                deck->UnblockGameInput(kMenuInputBlock);
++                blocking = false;
++            }
++        }
 +        static int lastState = -1;
 +        int state = (nav ? 1 : 0) | ((mImGuiIo->BackendFlags & ImGuiBackendFlags_HasGamepad) ? 2 : 0);
 +        if (state != lastState) {
@@ -11056,7 +11082,7 @@ index 1f9279bd..e1c0f625 100644
  
      // Mac interprets this as cmd+r when io.ConfigMacOSXBehavior is on (on by default)
      if ((ImGui::IsKeyDown(ImGuiKey_LeftCtrl) || ImGui::IsKeyDown(ImGuiKey_RightCtrl)) &&
-@@ -291,7 +376,24 @@ void Gui::StartFrame() {
+@@ -291,7 +402,24 @@ void Gui::StartFrame() {
      ImGui::NewFrame();
  }
  
