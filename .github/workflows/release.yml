@@ -36,7 +36,7 @@ jobs:
             git ca-certificates curl wget make file unzip zip xz-utils python3 python3-pip python3-mako python3-yaml \
             python3-packaging clang-18 lld-18 llvm-18 llvm-18-dev libclang-18-dev libclang-cpp18-dev \
             libclc-18-dev libllvmspirvlib-18-dev spirv-tools glslang-tools bison flex pkg-config \
-            cmake ninja-build meson ffmpeg imagemagick zlib1g-dev libzstd-dev libzip-dev
+            cmake ninja-build meson ffmpeg imagemagick zlib1g-dev libzstd-dev libzip-dev rsync patch
           ln -sf /usr/bin/clang-18 /usr/local/bin/clang
           ln -sf /usr/bin/clang++-18 /usr/local/bin/clang++
           ln -sf /usr/bin/ld.lld-18 /usr/local/bin/ld.lld
