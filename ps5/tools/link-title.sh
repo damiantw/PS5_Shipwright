@@ -165,6 +165,11 @@ cp "$work/link/llvm-pie.elf" "$root/build/last-title.elf"
 archive_revision=$(sed -n 's/^revision: //p' "$(dirname "$(dirname "$archive")")/PROVENANCE.txt" 2>/dev/null || true)
 printf '==> %s: %s (eboot.bin %s bytes; RADV %s)\n' "$title_id" "$app" \
     "$(stat -c %s "$app/eboot.bin")" "${archive_revision:0:11}"
+# Build ID for the shader warm-up stamp: this repo's commit (+dirty) and the eboot's sha256
+{
+    git -C "$root" describe --always --dirty --abbrev=12 2>/dev/null || echo unknown
+    sha256sum "$app/eboot.bin" | cut -d' ' -f1
+} | paste -sd' ' > "$app/build_id.txt"
 # The licences beside eboot.bin
 mkdir -p "$app/licenses"
 cp "$root/vendor/shipwright/LICENSE" "$app/licenses/Shipwright-LICENSE.txt" 2>/dev/null || true

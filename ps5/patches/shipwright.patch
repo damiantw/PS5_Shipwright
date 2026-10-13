@@ -313,7 +313,7 @@ index e3a387749..497af0092 100644
      }
  
 diff --git a/soh/soh/OTRGlobals.cpp b/soh/soh/OTRGlobals.cpp
-index d336c3c5b..5107a2ac8 100644
+index d336c3c5b..a52adbf63 100644
 --- a/soh/soh/OTRGlobals.cpp
 +++ b/soh/soh/OTRGlobals.cpp
 @@ -4,6 +4,8 @@
@@ -466,7 +466,7 @@ index d336c3c5b..5107a2ac8 100644
      previousImGuiScale = scale;
      previousImGuiScaleIndex = imGuiScaleIndex;
  }
-@@ -1519,6 +1606,99 @@ static void SetAppImageHome() {
+@@ -1519,6 +1606,102 @@ static void SetAppImageHome() {
  }
  #endif
  
@@ -501,7 +501,10 @@ index d336c3c5b..5107a2ac8 100644
 +        for (size_t i = 0; i < n; i++) { h ^= ((const unsigned char*)p)[i]; h *= 1099511628211ull; }
 +    };
 +    for (auto& k : keys) mix(&k, sizeof(k));
-+    const std::string salt = Ps5ShaderWarmupSalt() + " " + (const char*)gGitCommitHash;
++    std::string buildId;
++    std::getline(std::ifstream(std::filesystem::absolute(Ship::Context::GetAppBundlePath()).string() + "/build_id.txt"),
++                 buildId); // PS5_Shipwright commit + eboot sha256 (link-title.sh)
++    const std::string salt = Ps5ShaderWarmupSalt() + " " + (const char*)gGitCommitHash + " " + buildId;
 +    mix(salt.data(), salt.size());
 +    char stamp[32];
 +    snprintf(stamp, sizeof(stamp), "%016llx", (unsigned long long)h);
@@ -566,7 +569,7 @@ index d336c3c5b..5107a2ac8 100644
  extern "C" void InitOTR(int argc, char* argv[]) {
  #ifdef __linux__
      SetAppImageHome();
-@@ -1527,6 +1707,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
+@@ -1527,6 +1710,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
      OTRGlobals::Instance->RunExtract(argc, argv);
  
      OTRGlobals::Instance->Initialize();
@@ -576,7 +579,7 @@ index d336c3c5b..5107a2ac8 100644
      CustomMessageManager::Instance = new CustomMessageManager();
      ItemTableManager::Instance = new ItemTableManager();
      GameInteractor::Instance = new GameInteractor();
-@@ -1897,6 +2080,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
+@@ -1897,6 +2083,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
  std::map<std::string, SoundFontSample*> cachedCustomSFs;
  
  ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool isJapaneseFont) {
