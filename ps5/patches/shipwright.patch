@@ -415,7 +415,7 @@ index d336c3c5b..59db6dee9 100644
      ImFont* font;
      if (fontPath == "") {
 diff --git a/soh/soh/SohGui/Menu.cpp b/soh/soh/SohGui/Menu.cpp
-index 642bc54a3..548fa6c23 100644
+index 642bc54a3..ad00a37a2 100644
 --- a/soh/soh/SohGui/Menu.cpp
 +++ b/soh/soh/SohGui/Menu.cpp
 @@ -649,6 +649,17 @@ void Menu::DrawElement() {
@@ -436,6 +436,49 @@ index 642bc54a3..548fa6c23 100644
      if (popped != popout) {
          if (!popout) {
              ImGui::PopStyleVar();
+@@ -672,6 +683,20 @@ void Menu::DrawElement() {
+     ImGui::PushFont(OTRGlobals::Instance->fontStandardLargest);
+     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 8.0f));
+     std::string headerIndex = CVarGetString(headerCvar, "Settings");
++#ifdef __PROSPERO__
++    // pad nav cannot leave a child window for the header row: L1/R1 cycle the top tabs
++    if (!menuOrder.empty() && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
++        int dir = ImGui::IsKeyPressed(ImGuiKey_GamepadR1, false) - ImGui::IsKeyPressed(ImGuiKey_GamepadL1, false);
++        if (dir != 0) {
++            int n = (int)menuOrder.size();
++            int i = (int)GetVectorIndexOf(menuOrder, headerIndex);
++            if (i < 0 || i >= n) { i = 0; }
++            headerIndex = menuOrder[((i + dir) % n + n) % n];
++            CVarSetString(headerCvar, headerIndex.c_str());
++            CVarSave();
++        }
++    }
++#endif
+     ImVec2 pos = window->DC.CursorPos;
+     float centerX = pos.x + windowWidth / 2 - (style.ItemSpacing.x * (menuEntries.size() + 1));
+     std::vector<ImVec2> headerSizes;
+@@ -850,6 +875,21 @@ void Menu::DrawElement() {
+     if (!sidebar->contains(sectionIndex)) {
+         sectionIndex = menuEntries.at(headerIndex).sidebarOrder.at(0);
+     }
++#ifdef __PROSPERO__
++    // L2/R2 cycle the sidebar entries of the current tab
++    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
++        auto& order = menuEntries.at(headerIndex).sidebarOrder;
++        int dir = ImGui::IsKeyPressed(ImGuiKey_GamepadR2, false) - ImGui::IsKeyPressed(ImGuiKey_GamepadL2, false);
++        if (dir != 0 && !order.empty()) {
++            int n = (int)order.size();
++            int i = (int)GetVectorIndexOf(order, sectionIndex);
++            if (i < 0 || i >= n) { i = 0; }
++            sectionIndex = order[((i + dir) % n + n) % n];
++            CVarSetString(sidebarCvar, sectionIndex.c_str());
++            CVarSave();
++        }
++    }
++#endif
+     float sectionCenterX = pos.x + (sidebarWidth / 2);
+     float topY = pos.y;
+     ImGui::SetNextWindowSizeConstraints({ sidebarWidth, 0 }, { sidebarWidth, columnHeight });
 diff --git a/soh/soh/SohGui/SohMenuSettings.cpp b/soh/soh/SohGui/SohMenuSettings.cpp
 index 476f99f3f..6a9ad3ab2 100644
 --- a/soh/soh/SohGui/SohMenuSettings.cpp

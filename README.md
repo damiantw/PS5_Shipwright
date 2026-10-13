@@ -87,7 +87,8 @@ Options is Start and the right stick is the C buttons. You can remap everything 
 | D-pad / left stick | move between items (amber frame shows focus) |
 | Cross | select / enter |
 | Circle | back; closes the menu when nothing is selected |
-| L1 / R1 | switch tabs |
+| L1 / R1 | previous / next top tab |
+| L2 / R2 | previous / next sidebar page |
 
 The menu is sized for a TV (scale options 1.5x to 3.0x, "Large" by default), shows PS5
 button names, and hides PC-only options.
