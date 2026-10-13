@@ -19,3 +19,4 @@ game/
 ps5ctl.json
 .profile.json
 mkprofile.py
+tools/ps5ctl/__pycache__/
