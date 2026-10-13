@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ghostship for the PlayStation 5 - SDL2 at a pinned release, patched for the console.
+# Ship of Harkinian for the PlayStation 5 - SDL2 at a pinned release, patched for the console.
 #
 #   ps5/tools/setup-sdl.sh       fetch it into .deps/SDL2 (once a release), print the path
 #

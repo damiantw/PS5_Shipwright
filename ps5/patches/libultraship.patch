@@ -10508,10 +10508,21 @@ index 00000000..709e28c5
 +#define CMAKE_INSTALL_PREFIX "/usr/local"
 +/* #undef NON_PORTABLE */
 diff --git a/src/ship/Context.cpp b/src/ship/Context.cpp
-index 361a1f75..b38f613d 100644
+index 361a1f75..50a87db4 100644
 --- a/src/ship/Context.cpp
 +++ b/src/ship/Context.cpp
-@@ -177,7 +177,13 @@ bool Context::InitLogging(spdlog::level::level_enum debugBuildLogLevel,
+@@ -29,6 +29,10 @@
+ #include <pwd.h>
+ #endif
+ 
++#ifdef __PROSPERO__
++extern "C" const char* ps5_data_dir(void);
++#endif
++
+ namespace Ship {
+ std::unique_ptr<Context> Context::mContext;
+ 
+@@ -177,7 +181,13 @@ bool Context::InitLogging(spdlog::level::level_enum debugBuildLogLevel,
          mLogger = std::make_shared<spdlog::async_logger>(GetName(), sinks.begin(), sinks.end(), mLogThreadPool,
                                                           spdlog::async_overflow_policy::block);
          GetLogger()->set_level(releaseBuildLogLevel);
@@ -10525,7 +10536,7 @@ index 361a1f75..b38f613d 100644
  #endif
          GetLogger()->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%@] [%l] %v");
  
-@@ -474,6 +480,11 @@ std::string Context::GetShortName() const {
+@@ -474,6 +484,11 @@ std::string Context::GetShortName() const {
  }
  
  std::string Context::GetAppBundlePath() {
@@ -10537,19 +10548,20 @@ index 361a1f75..b38f613d 100644
  #if defined(__ANDROID__)
      const char* externaldir = SDL_AndroidGetExternalStoragePath();
      if (externaldir != NULL) {
-@@ -537,6 +548,11 @@ std::string Context::GetAppBundlePath() {
+@@ -537,6 +552,12 @@ std::string Context::GetAppBundlePath() {
  }
  
  std::string Context::GetAppDirectoryPath(const std::string& appName) {
 +#ifdef __PROSPERO__
-+    // PlayStation 5: settings, saves and logs, apart from what a release carries
-+    return "/app0/userdata";
++    // PlayStation 5: settings, saves, logs, mods and oot.o2r, in the data folder
++    // outside the title's own (ps5/src/startup.c), so a reinstall keeps them
++    return ps5_data_dir();
 +#endif
 +
  #if defined(__ANDROID__)
      const char* externaldir = SDL_AndroidGetExternalStoragePath();
      if (externaldir != NULL) {
-@@ -605,6 +621,11 @@ std::string Context::LocateFileAcrossAppDirs(const std::string& path, const std:
+@@ -605,6 +626,11 @@ std::string Context::LocateFileAcrossAppDirs(const std::string& path, const std:
      if (std::filesystem::exists(fpath)) {
          return fpath;
      }
@@ -10561,6 +10573,76 @@ index 361a1f75..b38f613d 100644
      // current dir
      return "./" + std::string(path);
  }
+diff --git a/src/ship/controller/controldevice/controller/mapping/sdl/SDLAxisDirectionToAnyMapping.cpp b/src/ship/controller/controldevice/controller/mapping/sdl/SDLAxisDirectionToAnyMapping.cpp
+index d2477204..5c6c71da 100644
+--- a/src/ship/controller/controldevice/controller/mapping/sdl/SDLAxisDirectionToAnyMapping.cpp
++++ b/src/ship/controller/controldevice/controller/mapping/sdl/SDLAxisDirectionToAnyMapping.cpp
+@@ -3,6 +3,12 @@
+ #include "ship/utils/StringHelper.h"
+ #include "ship/window/gui/IconsFontAwesome4.h"
+ 
++#ifdef __PROSPERO__
++#define SDL_PS5_NAME(ps5, other) ps5
++#else
++#define SDL_PS5_NAME(ps5, other) other
++#endif
++
+ namespace Ship {
+ SDLAxisDirectionToAnyMapping::SDLAxisDirectionToAnyMapping(int32_t sdlControllerAxis, int32_t axisDirection)
+     : ControllerInputMapping(PhysicalDeviceType::SDLGamepad) {
+@@ -28,10 +34,10 @@ std::string SDLAxisDirectionToAnyMapping::GetPhysicalInputName() {
+             return StringHelper::Sprintf("Right Stick %s",
+                                          mAxisDirection == NEGATIVE ? ICON_FA_ARROW_UP : ICON_FA_ARROW_DOWN);
+         case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
+-            return "LT";
++            return SDL_PS5_NAME("L2", "LT");
+             break;
+         case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
+-            return "RT";
++            return SDL_PS5_NAME("R2", "RT");
+             break;
+         default:
+             break;
+diff --git a/src/ship/controller/controldevice/controller/mapping/sdl/SDLButtonToAnyMapping.cpp b/src/ship/controller/controldevice/controller/mapping/sdl/SDLButtonToAnyMapping.cpp
+index 907764ef..cb8e7e5a 100644
+--- a/src/ship/controller/controldevice/controller/mapping/sdl/SDLButtonToAnyMapping.cpp
++++ b/src/ship/controller/controldevice/controller/mapping/sdl/SDLButtonToAnyMapping.cpp
+@@ -13,6 +13,35 @@ SDLButtonToAnyMapping::~SDLButtonToAnyMapping() {
+ }
+ 
+ std::string SDLButtonToAnyMapping::GetPhysicalInputName() {
++#ifdef __PROSPERO__
++    // PlayStation 5: the DualSense's own names (the touch pad's click is SDL "back")
++    switch (mControllerButton) {
++        case SDL_CONTROLLER_BUTTON_A:
++            return "Cross";
++        case SDL_CONTROLLER_BUTTON_B:
++            return "Circle";
++        case SDL_CONTROLLER_BUTTON_X:
++            return "Square";
++        case SDL_CONTROLLER_BUTTON_Y:
++            return "Triangle";
++        case SDL_CONTROLLER_BUTTON_BACK:
++            return "Touchpad";
++        case SDL_CONTROLLER_BUTTON_GUIDE:
++            return "PS";
++        case SDL_CONTROLLER_BUTTON_START:
++            return "Options";
++        case SDL_CONTROLLER_BUTTON_LEFTSTICK:
++            return "L3";
++        case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
++            return "R3";
++        case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
++            return "L1";
++        case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
++            return "R1";
++        default:
++            break;
++    }
++#endif
+     switch (mControllerButton) {
+         case SDL_CONTROLLER_BUTTON_A:
+             return "A";
 diff --git a/src/ship/scripting/ScriptLoader.cpp b/src/ship/scripting/ScriptLoader.cpp
 index 8235c8ad..9eb40462 100644
 --- a/src/ship/scripting/ScriptLoader.cpp
@@ -10719,21 +10801,24 @@ index 8235c8ad..9eb40462 100644
  
      loader.Init(temp);
 diff --git a/src/ship/window/gui/Gui.cpp b/src/ship/window/gui/Gui.cpp
-index 1f9279bd..ef582f4e 100644
+index 1f9279bd..9a32003a 100644
 --- a/src/ship/window/gui/Gui.cpp
 +++ b/src/ship/window/gui/Gui.cpp
-@@ -1,5 +1,10 @@
+@@ -1,5 +1,13 @@
  #define NOMINMAX
  
 +#ifdef __PROSPERO__
 +#include <unistd.h>
 +#include <imgui.h>
 +#include <imgui_impl_sdl2.h>
++#include <imgui_internal.h>
++#include <SDL2/SDL.h>
++#include <spdlog/spdlog.h>
 +#endif
  #include "ship/window/gui/Gui.h"
  
  #include <cstring>
-@@ -226,6 +231,16 @@ void Gui::DrawMenu() {
+@@ -226,12 +234,50 @@ void Gui::DrawMenu() {
  
      ImGui::DockSpace(dockId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None | ImGuiDockNodeFlags_NoDockingInCentralNode);
  
@@ -10747,9 +10832,92 @@ index 1f9279bd..ef582f4e 100644
 +    }
 +#endif
 +
++    bool padToggle = ImGui::IsKeyPressed(TOGGLE_PAD_BTN, false);
++#ifdef __PROSPERO__
++    // PlayStation 5: the touch pad's click (SDL "back") opens and closes the menu,
++    // read from SDL itself so it works before ImGui has found the pad and while
++    // controller navigation is off.
++    padToggle = false;
++    {
++        static bool wasDown;
++        bool down = false;
++        for (int i = 0; i < SDL_NumJoysticks(); i++) {
++            SDL_GameController* pad = SDL_GameControllerFromPlayerIndex(i);
++            if (pad == nullptr && SDL_IsGameController(i)) {
++                pad = SDL_GameControllerFromInstanceID(SDL_JoystickGetDeviceInstanceID(i));
++            }
++            if (pad != nullptr && SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_BACK)) {
++                down = true;
++            }
++        }
++        if (down && !wasDown) {
++            padToggle = true;
++            Ship::Context::GetRawInstance()->GetConsoleVariables()->SetInteger(CVAR_IMGUI_CONTROLLER_NAV, 1);
++        }
++        if (down != wasDown) {
++            SPDLOG_INFO("PS5 touch pad {} (menu {})", down ? "down" : "up", GetMenuOrMenubarVisible() ? "open" : "closed");
++        }
++        wasDown = down;
++    }
++#endif
      if (ImGui::IsKeyPressed(TOGGLE_BTN, false) || ImGui::IsKeyPressed(ImGuiKey_Escape, false) ||
-         (ImGui::IsKeyPressed(TOGGLE_PAD_BTN, false) &&
+-        (ImGui::IsKeyPressed(TOGGLE_PAD_BTN, false) &&
++        (padToggle &&
           Ship::Context::GetRawInstance()->GetConsoleVariables()->GetInteger(CVAR_IMGUI_CONTROLLER_NAV, 0))) {
+-        if ((ImGui::IsKeyPressed(ImGuiKey_Escape, false) || ImGui::IsKeyPressed(TOGGLE_PAD_BTN, false)) && GetMenu()) {
++        if ((ImGui::IsKeyPressed(ImGuiKey_Escape, false) || padToggle) && GetMenu()) {
+             GetMenu()->ToggleVisibility();
+-        } else if ((ImGui::IsKeyPressed(TOGGLE_BTN, false) || ImGui::IsKeyPressed(TOGGLE_PAD_BTN, false)) &&
++        } else if ((ImGui::IsKeyPressed(TOGGLE_BTN, false) || padToggle) &&
+                    GetMenuBar()) {
+             GetMenuBar()->ToggleVisibility();
+         }
+@@ -243,6 +289,45 @@ void Gui::DrawMenu() {
+             mImGuiIo->ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
+         }
+     }
++#ifdef __PROSPERO__
++    // PlayStation 5: the pad is the only input, so gamepad navigation follows the
++    // menu's visibility every frame (a toggle's visibility can settle a frame late).
++    {
++        bool nav = GetMenuOrMenubarVisible();
++        if (nav) {
++            mImGuiIo->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
++        } else {
++            mImGuiIo->ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
++        }
++        // a focus rectangle that reads from the couch: bright amber, and thick
++        // (ImGui's own is 2 pixels, a hairline on a 4K television)
++        ImGui::GetStyle().Colors[ImGuiCol_NavCursor] = ImVec4(1.0f, 0.78f, 0.0f, 1.0f);
++        ImGuiContext& g = *GImGui;
++        if (nav && g.NavWindow != nullptr && g.NavId != 0 && g.NavCursorVisible) {
++            ImRect rect = ImGui::WindowRectRelToAbs(g.NavWindow, g.NavWindow->NavRectRel[g.NavLayer]);
++            float pad = 6.0f;
++            ImGui::GetForegroundDrawList()->AddRect(rect.Min - ImVec2(pad, pad), rect.Max + ImVec2(pad, pad),
++                                                    IM_COL32(255, 200, 0, 255), 8.0f, 0, 6.0f);
++        }
++        // Circle backs out of an open list or popup (ImGui's own cancel) and,
++        // with nothing open or being edited, closes the menu
++        if (nav && ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false) &&
++            !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel) &&
++            !ImGui::IsAnyItemActive()) {
++            if (GetMenu() && GetMenu()->IsVisible()) {
++                GetMenu()->ToggleVisibility();
++            } else if (GetMenuBar() && GetMenuBar()->IsVisible()) {
++                GetMenuBar()->ToggleVisibility();
++            }
++        }
++        static int lastState = -1;
++        int state = (nav ? 1 : 0) | ((mImGuiIo->BackendFlags & ImGuiBackendFlags_HasGamepad) ? 2 : 0);
++        if (state != lastState) {
++            SPDLOG_INFO("PS5 menu {} gamepad {}", nav ? "open" : "closed", (state & 2) ? "found" : "missing");
++            lastState = state;
++        }
++    }
++#endif
+ 
+     // Mac interprets this as cmd+r when io.ConfigMacOSXBehavior is on (on by default)
+     if ((ImGui::IsKeyDown(ImGuiKey_LeftCtrl) || ImGui::IsKeyDown(ImGuiKey_RightCtrl)) &&
 diff --git a/tools/generate_keys_header.cpp b/tools/generate_keys_header.cpp
 new file mode 100644
 index 00000000..b8d3b1ba

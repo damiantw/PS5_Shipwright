@@ -4,7 +4,7 @@
 #   ps5/tools/setup-source.sh          apply ps5/patches/{shipwright,libultraship,torch}.patch
 #   ps5/tools/setup-source.sh --save   write the trees' changes back to the patches
 #
-# vendor/ghostship is Ghostship at an upstream revision, with libultraship and
+# vendor/shipwright is Shipwright at an upstream revision, with libultraship and
 # Torch as its own submodules. What the console needs changed is kept here as
 # patches, not as forks. A patch already applied is left alone, so this can run
 # before every build.
@@ -18,8 +18,6 @@ trees=(shipwright:"$game" libultraship:"$game/libultraship" torch:"$game/torch")
 
 if [[ ${1:-} == --save ]]; then
     for entry in "${trees[@]}"; do
-        # new files too (the Vulkan renderer is new to Shipwright's libultraship pin)
-        git -C "${entry#*:}" add -N -- . ':!properties.h' ':!soh/properties.h' ':!soh/assets/custom/shaders' ':!*.rej' 2>/dev/null || true
         # generated at configure time, never the console's change
         git -C "${entry#*:}" diff --ignore-submodules -- . ':!properties.h' ':!src/port/build.c' > "$root/ps5/patches/${entry%%:*}.patch"
     done

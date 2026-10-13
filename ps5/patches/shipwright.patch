@@ -91,20 +91,65 @@ index baf3dc261..82cb18d59 100644
  #endif
  }
 diff --git a/soh/soh/OTRGlobals.cpp b/soh/soh/OTRGlobals.cpp
-index d336c3c5b..6278da6f6 100644
+index d336c3c5b..46e4ab8ba 100644
 --- a/soh/soh/OTRGlobals.cpp
 +++ b/soh/soh/OTRGlobals.cpp
-@@ -123,6 +123,9 @@
+@@ -123,11 +123,21 @@
  
  #ifdef __WIIU__
  const uint32_t defaultImGuiScale = 3;
 +#elif defined(__PROSPERO__)
-+// PlayStation 5: a television across the room
++// PlayStation 5: a 4K television across the room ("Large")
 +const uint32_t defaultImGuiScale = 2;
  #else
  const uint32_t defaultImGuiScale = 1;
  #endif
-@@ -672,6 +675,18 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+ 
++#ifdef __PROSPERO__
++// PlayStation 5: the menu draws at 3840x2160, so every step is about 2.5x the desktop's;
++// fonts are rasterised at PS5_FONT_RASTER times their size so they stay sharp when scaled
++const float imguiScaleOptionToValue[4] = { 1.5f, 2.0f, 2.5f, 3.0f };
++#define PS5_FONT_RASTER 3.0f
++#else
+ const float imguiScaleOptionToValue[4] = { 0.75f, 1.0f, 1.5f, 2.0f };
++#endif
+ 
+ bool SoH_HandleConfigDrop(char* filePath);
+ 
+@@ -330,7 +340,32 @@ OTRGlobals::OTRGlobals() {
+     }
+ 
+     previousImGuiScaleIndex = -1;
++#ifdef __PROSPERO__
++    previousImGuiScale = 1.0f;
++    // PlayStation 5: the menu's console defaults, applied once (and to a config
++    // written by an earlier build): couch-sized, worked with the pad, and the game
++    // not reacting to the pad while the menu is open
++    if (CVarGetInteger(CVAR_SETTING("PS5.MenuDefaults"), 0) < 2) {
++        CVarSetInteger(CVAR_SETTING("ImGuiScale"), defaultImGuiScale);
++        CVarSetInteger(CVAR_IMGUI_CONTROLLER_NAV, 1);
++        CVarSetInteger(CVAR_ALLOW_BACKGROUND_INPUTS, 0);
++        // search as a sidebar entry: the header's search box needs a keyboard, and
++        // without it the header's tabs fit across the screen at couch scale
++        CVarSetInteger(CVAR_SETTING("Menu.SidebarSearch"), 1);
++        CVarSetInteger(CVAR_SETTING("PS5.MenuDefaults"), 2);
++        CVarSave();
++    }
++    {
++        // more room around every item: a pad moves by item, and a TV is read from afar
++        ImGuiStyle& style = ImGui::GetStyle();
++        style.FramePadding = ImVec2(style.FramePadding.x * 1.5f, style.FramePadding.y * 1.6f);
++        style.ItemSpacing = ImVec2(style.ItemSpacing.x * 1.3f, style.ItemSpacing.y * 1.6f);
++        style.ItemInnerSpacing = ImVec2(style.ItemInnerSpacing.x * 1.3f, style.ItemInnerSpacing.y * 1.3f);
++        style.GrabMinSize *= 1.5f;
++    }
++#else
+     previousImGuiScale = defaultImGuiScale;
++#endif
+     ScaleImGui();
+ }
+ 
+@@ -672,6 +707,18 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                          continue;
                      }
                      case PS_FIRST: {
@@ -123,6 +168,143 @@ index d336c3c5b..6278da6f6 100644
                          if (!extract.ManuallySearchForRomMatchingType(RomSearchMode::Both)) {
                              promptStep = PS_FILE_CHECK;
                              continue;
+@@ -1007,7 +1054,11 @@ void OTRGlobals::ScaleImGui() {
+     float scale = imguiScaleOptionToValue[imGuiScaleIndex];
+     float newScale = scale / previousImGuiScale;
+     ImGui::GetStyle().ScaleAllSizes(newScale);
++#ifdef PS5_FONT_RASTER
++    ImGui::GetIO().FontGlobalScale = scale / PS5_FONT_RASTER;
++#else
+     ImGui::GetIO().FontGlobalScale = scale;
++#endif
+     previousImGuiScale = scale;
+     previousImGuiScaleIndex = imGuiScaleIndex;
+ }
+@@ -1897,6 +1948,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
+ std::map<std::string, SoundFontSample*> cachedCustomSFs;
+ 
+ ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool isJapaneseFont) {
++#ifdef PS5_FONT_RASTER
++    size *= PS5_FONT_RASTER;
++#endif
+     auto mImGuiIo = &ImGui::GetIO();
+     ImFont* font;
+     if (fontPath == "") {
+diff --git a/soh/soh/SohGui/Menu.cpp b/soh/soh/SohGui/Menu.cpp
+index 642bc54a3..548fa6c23 100644
+--- a/soh/soh/SohGui/Menu.cpp
++++ b/soh/soh/SohGui/Menu.cpp
+@@ -649,6 +649,17 @@ void Menu::DrawElement() {
+ 
+     ImGui::PopStyleColor();
+ 
++#ifdef __PROSPERO__
++    // PlayStation 5: the pad is the only input, and ImGui navigates only a focused
++    // window: keep the menu focused (unless one of its popups is up) with the
++    // navigation cursor shown
++    if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
++        !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel)) {
++        ImGui::SetWindowFocus();
++        ImGui::SetNavCursorVisible(true);
++    }
++#endif
++
+     if (popped != popout) {
+         if (!popout) {
+             ImGui::PopStyleVar();
+diff --git a/soh/soh/SohGui/SohMenuSettings.cpp b/soh/soh/SohGui/SohMenuSettings.cpp
+index 476f99f3f..fbe95c86f 100644
+--- a/soh/soh/SohGui/SohMenuSettings.cpp
++++ b/soh/soh/SohGui/SohMenuSettings.cpp
+@@ -139,6 +139,7 @@ void SohMenu::AddMenuSettings() {
+                      .ComboMap(menuThemeOptions)
+                      .DefaultIndex(Colors::LightBlue));
+ #if not defined(__SWITCH__) and not defined(__WIIU__)
++#ifndef __PROSPERO__ // PlayStation 5: not for a console
+     AddWidget(path, "Menu Controller Navigation", WIDGET_CVAR_CHECKBOX)
+         .CVar(CVAR_IMGUI_CONTROLLER_NAV)
+         .RaceDisable(false)
+@@ -146,6 +147,7 @@ void SohMenu::AddMenuSettings() {
+             "Allows controller navigation of the port menu (Settings, Enhancements,...)\nCAUTION: "
+             "This will disable game inputs while the menu is visible.\n\nD-pad to move between "
+             "items, A to select, B to move up in scope."));
++#endif
+     AddWidget(path, "Allow background inputs", WIDGET_CVAR_CHECKBOX)
+         .CVar(CVAR_ALLOW_BACKGROUND_INPUTS)
+         .RaceDisable(false)
+@@ -164,6 +166,7 @@ void SohMenu::AddMenuSettings() {
+             "Sets the opacity of the background of the port menu."));
+ 
+     AddWidget(path, "General Settings", WIDGET_SEPARATOR_TEXT);
++#ifndef __PROSPERO__ // PlayStation 5: not for a console
+     AddWidget(path, "Cursor Always Visible", WIDGET_CVAR_CHECKBOX)
+         .CVar(CVAR_SETTING("CursorVisibility"))
+         .RaceDisable(false)
+@@ -172,6 +175,7 @@ void SohMenu::AddMenuSettings() {
+                 CVarGetInteger(CVAR_SETTING("CursorVisibility"), 0));
+         })
+         .Options(CheckboxOptions().Tooltip("Makes the cursor always visible, even in full screen."));
++#endif
+ #endif
+     AddWidget(path, "Search In Sidebar", WIDGET_CVAR_CHECKBOX)
+         .CVar(CVAR_SETTING("Menu.SidebarSearch"))
+@@ -193,6 +197,7 @@ void SohMenu::AddMenuSettings() {
+     AddWidget(path, "Reset Button Combination:", WIDGET_CVAR_BTN_SELECTOR)
+         .CVar("gSettings.ResetBtn")
+         .Options(BtnSelectorOptions().DefaultValue(BTN_CUSTOM_MODIFIER2));
++#ifndef __PROSPERO__ // PlayStation 5: not for a console
+     AddWidget(path, "Open App Files Folder", WIDGET_BUTTON)
+         .RaceDisable(false)
+         .Callback([](WidgetInfo& info) {
+@@ -200,6 +205,7 @@ void SohMenu::AddMenuSettings() {
+             SDL_OpenURL(std::string("file:///" + std::filesystem::absolute(filesPath).string()).c_str());
+         })
+         .Options(ButtonOptions().Tooltip("Opens the folder that contains the save and mods folders, etc."));
++#endif
+ 
+     AddWidget(path, "Boot", WIDGET_SEPARATOR_TEXT);
+     AddWidget(path, "Boot Sequence", WIDGET_CVAR_COMBOBOX)
+@@ -263,7 +269,11 @@ void SohMenu::AddMenuSettings() {
+         .Options(ComboboxOptions()
+                      .ComboMap(imguiScaleOptions)
+                      .Tooltip("Changes the scaling of the ImGui menu elements.")
++#ifdef __PROSPERO__
++                     .DefaultIndex(2)
++#else
+                      .DefaultIndex(1)
++#endif
+                      .ComponentAlignment(ComponentAlignments::Right)
+                      .LabelPosition(LabelPositions::Far))
+         .Callback([](WidgetInfo& info) { OTRGlobals::Instance->ScaleImGui(); });
+@@ -334,10 +344,12 @@ void SohMenu::AddMenuSettings() {
+     path.sidebarName = "Graphics";
+     AddSidebarEntry("Settings", "Graphics", 3);
+     AddWidget(path, "Graphics Options", WIDGET_SEPARATOR_TEXT);
++#ifndef __PROSPERO__ // PlayStation 5: always full screen
+     AddWidget(path, "Toggle Fullscreen", WIDGET_BUTTON)
+         .RaceDisable(false)
+         .Callback([](WidgetInfo& info) { Ship::Context::GetRawInstance()->GetWindow()->ToggleFullscreen(); })
+         .Options(ButtonOptions().Tooltip("Toggles Fullscreen On/Off."));
++#endif
+     AddWidget(path, "Internal Resolution", WIDGET_CVAR_SLIDER_FLOAT)
+         .CVar(CVAR_INTERNAL_RESOLUTION)
+         .RaceDisable(false)
+@@ -409,6 +421,7 @@ void SohMenu::AddMenuSettings() {
+         .Options(CheckboxOptions()
+                      .Tooltip("Removes tearing, but clamps your max FPS to your display's refresh rate.")
+                      .DefaultValue(true));
++#ifndef __PROSPERO__ // PlayStation 5: always full screen
+     AddWidget(path, "Windowed Fullscreen", WIDGET_CVAR_CHECKBOX)
+         .CVar(CVAR_SDL_WINDOWED_FULLSCREEN)
+         .RaceDisable(false)
+@@ -416,6 +429,7 @@ void SohMenu::AddMenuSettings() {
+             info.isHidden = mSohMenu->disabledMap.at(DISABLE_FOR_NO_WINDOWED_FULLSCREEN).active;
+         })
+         .Options(CheckboxOptions().Tooltip("Enables Windowed Fullscreen Mode."));
++#endif
+     AddWidget(path, "Allow multi-windows", WIDGET_CVAR_CHECKBOX)
+         .CVar(CVAR_ENABLE_MULTI_VIEWPORTS)
+         .RaceDisable(false)
 diff --git a/soh/soh/frame_interpolation.cpp b/soh/soh/frame_interpolation.cpp
 index 811f443ab..6ffdd0a6e 100644
 --- a/soh/soh/frame_interpolation.cpp

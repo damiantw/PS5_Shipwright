@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ghostship for the PlayStation 5 - the title's art, from the pictures in this folder.
+# Ship of Harkinian for the PlayStation 5 - the title's art, from the pictures in this folder.
 #
 #   ps5/art/make-title-art.sh
 #
@@ -7,8 +7,8 @@
 #   pic-source.png    ->  ps5/sce_sys/pic0.dds    the background behind the title, 3840x2160
 #                     ->  ps5/sce_sys/pic1.dds    the splash while it starts
 #
-# Both pictures are the port's own (a storybook castle under a gold star, made for it by
-# Gary Riches with an image generator): nothing in them is from the game.
+# Both pictures are the port's own custom art (approved by the maintainer; the
+# master is kept outside the repository): no ROM data is in them.
 # Needs Python with Pillow and numpy.
 #
 # SPDX-License-Identifier: MIT

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ghostship for the PlayStation 5 - shaderc at a pinned release, with what it builds from.
+# Ship of Harkinian for the PlayStation 5 - shaderc at a pinned release, with what it builds from.
 #
 #   ps5/tools/setup-shaderc.sh   fetch it into .deps/shaderc (once a release), print the path
 #

@@ -23,6 +23,10 @@ void say(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
 double now_seconds(void);
 
+/* Where settings, saves, logs, mods and oot.o2r live (/data/soh, or
+ * /app0/userdata when that cannot be written). Set before main. */
+const char *ps5_data_dir(void);
+
 /* The pad, in the console's button numbering. */
 enum {
    PAD_L3 = 0x000002,

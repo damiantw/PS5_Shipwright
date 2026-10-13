@@ -3,12 +3,12 @@
 #
 #   ps5/tools/build.sh [ninja arguments]
 #
-# Applies the console's patch to vendor/devilutionx (tools/setup-source.sh),
+# Applies the console's patches to vendor/shipwright (tools/setup-source.sh),
 # configures it with the payload SDK's CMake toolchain (once) and
-# ps5/cmake/ps5-game.cmake, which gives it SDL3 with the console's drivers and
+# ps5/cmake/ps5-game.cmake, which gives it SDL2 with the console's drivers and
 # the title's link (tools/link-title.sh). The title folder gets eboot.bin,
-# sce_sys/, DevilutionX's own assets (assets/ and mods/) and
-# the licences. No game data: DIABDAT.MPQ is yours, placed beside eboot.bin.
+# sce_sys/, soh.o2r and the licences. No game data: oot.o2r is made from your
+# own ROM (ps5/tools/assets.sh) and is never part of the build.
 #
 #   PS5_BUILD_DIR    the build tree (default build/game; the Linux VM's own disk
 #                    is several times faster than the shared folder)

@@ -136,6 +136,8 @@ ps5dl_lstat(const char *path, struct stat *out)
    return stat(path, out);
 }
 
+#include "platform.h"
+
 /* No /tmp for a title: a scratch file in its own folder, gone when it is closed. */
 #include <stdio.h>
 #include <unistd.h>
@@ -144,8 +146,8 @@ FILE *
 ps5dl_tmpfile(void)
 {
    static int serial;
-   char path[64];
-   snprintf(path, sizeof path, "/app0/userdata/.tmp-%d", __atomic_fetch_add(&serial, 1, __ATOMIC_RELAXED));
+   char path[300];
+   snprintf(path, sizeof path, "%s/.tmp-%d", ps5_data_dir(), __atomic_fetch_add(&serial, 1, __ATOMIC_RELAXED));
    FILE *file = fopen(path, "w+");
    if (file)
       unlink(path);

@@ -1,0 +1,56 @@
+#!/workspace/ps5env/bin/python
+"""ps5ctl wake|start|stop|status|press BTN [--hold MS]|seq 'A,B:300,WAIT500,C' [--hold MS --gap MS]|down BTN|up BTN|stick left|right X Y [--hold MS]|shot out.png"""
+import json, os, socket, subprocess, sys, time, argparse
+SOCK = os.environ.get("PS5CTL_SOCK", "/tmp/ps5ctl.sock"); D = os.path.dirname(os.path.realpath(__file__))
+def call(req):
+    s = socket.socket(socket.AF_UNIX); s.connect(SOCK); s.sendall((json.dumps(req) + "\n").encode())
+    buf = b""
+    while not buf.endswith(b"\n"):
+        c = s.recv(65536)
+        if not c: break
+        buf += c
+    return json.loads(buf)
+p = argparse.ArgumentParser(usage=__doc__); p.add_argument("cmd"); p.add_argument("args", nargs="*")
+p.add_argument("--hold", type=int, default=120); p.add_argument("--gap", type=int, default=250); p.add_argument("--measure", action="store_true", help="report ms until the video frame visibly changes")
+a = p.parse_args()
+if a.cmd == "start":
+    # match by process name only (pkill -f would match our own shells)
+    if subprocess.run(["pgrep", "-x", "AppRun|chiaki|chiaki-ng"], capture_output=True).stdout:
+        print("note: GUI chiaki running; killing it to free the Remote Play slot", file=sys.stderr)
+        subprocess.run(["pkill", "-TERM", "-x", "AppRun|chiaki|chiaki-ng"]); time.sleep(4)
+        subprocess.run(["pkill", "-KILL", "-x", "AppRun|chiaki|chiaki-ng"])
+    if os.path.exists(SOCK): os.unlink(SOCK)
+    log = open("/tmp/ps5ctld.log", "w")
+    proc = subprocess.Popen([sys.executable, os.path.join(D, "ps5ctld.py")], stdout=log, stderr=log, start_new_session=True)
+    for _ in range(180):
+        time.sleep(1)
+        if os.path.exists(SOCK): print(json.dumps(call({"op": "status"}))); sys.exit(0)
+        if proc.poll() is not None: break
+    print("daemon failed; see /tmp/ps5ctld.log", file=sys.stderr); sys.exit(1)
+if a.cmd == "wake":
+    # Remote Play wake (rest mode -> on) with the registered credentials. HDMI Device
+    # Link (CEC) is off on this console, so waking it does not switch the TV on.
+    sys.path.insert(0, D)
+    from pyremoteplay import RPDevice
+    src = open(os.path.join(D, "ps5ctld.py")).read()
+    cfg = {}
+    for line in src.splitlines():
+        if line.startswith(("HOST =", "HOST=", "USER =", "USER=")):
+            exec(line, {"os": os}, cfg)
+    dev = RPDevice(cfg["HOST"]); st = dev.get_status() or {}
+    if st.get("status-code") == 200:
+        print(json.dumps({"already_on": True})); sys.exit(0)
+    dev.wakeup(user=cfg["USER"])
+    for _ in range(60):
+        time.sleep(2); st = dev.get_status() or {}
+        if st.get("status-code") == 200: print(json.dumps({"woke": True})); sys.exit(0)
+    print(json.dumps({"error": "console did not report on within 120 s", "status": st})); sys.exit(1)
+req = {"stop": {"op": "quit"}, "status": {"op": "status"}}.get(a.cmd)
+if a.cmd == "press": req = {"op": "press", "button": a.args[0], "hold": a.hold, "measure": a.measure}
+elif a.cmd == "seq": req = {"op": "seq", "items": [x for x in a.args[0].split(",") if x], "hold": a.hold, "gap": a.gap}
+elif a.cmd in ("down", "up"): req = {"op": a.cmd, "button": a.args[0]}
+elif a.cmd == "stick": req = {"op": "stick", "stick": a.args[0], "x": a.args[1], "y": a.args[2], "hold": a.hold}
+elif a.cmd == "shot": req = {"op": "shot", "path": os.path.abspath(a.args[0])}
+if req is None: print(__doc__); sys.exit(1)
+t = time.time(); r = call(req); r["rtt_ms"] = round((time.time() - t) * 1000, 1); print(json.dumps(r))
+sys.exit(1 if "error" in r else 0)
