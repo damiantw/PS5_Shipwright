@@ -1,215 +1,150 @@
 # Ship of Harkinian for PlayStation 5
 
-A PS5 homebrew port of [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright)
-(Shipwright) on [libultraship](https://github.com/Kenix3/libultraship). It draws through
-libultraship's Vulkan renderer on RADV, using Mihawk's
-[PS5 Vulkan](https://github.com/mihawk-99/PS5_Vulkan) stack.
+Play **Ship of Harkinian** (Shipwright), the PC port of *The Legend of Zelda: Ocarina of Time*,
+on a jailbroken PS5. This is a homebrew port: the game runs natively on the console with
+Vulkan graphics, the DualSense, saves and Ship of Harkinian's full settings menu.
 
-**Status:** boots, plays and saves on a retail PS5 with a homebrew environment
-(tested 2026-10-12). See [Known issues](#known-issues).
-
-**No ROM or game data is in this repository or in any build of it.** You supply your own
-Ocarina of Time ROM. Never commit a ROM (`*.z64`, `*.n64`, `*.v64`) or an `.o2r` made from
-one; `.gitignore` blocks them.
+**No game data is included.** You need your own, legally dumped Ocarina of Time ROM. The
+game turns it into its data file on the console the first time you start it.
 
 ## Credits
 
-- **[griches/PS5_Ghostship](https://github.com/griches/PS5_Ghostship)** (Gary Riches): this
-  repository's layout, the console layer (`ps5/`: SDL2 video/audio/pad drivers, shims,
-  start-up, link recipe, packaging) and the libultraship Vulkan changes for the PS5 all
-  come from that port of Ghostship.
-- **[mihawk-99](https://github.com/mihawk-99)** (Mihawk): PS5_Vulkan, PS5_Mesa (RADV on the
-  PS5), PS5_PayloadSDK and PS5_VulkanTemplate, which everything here builds on.
-- [ps5-payload-dev/sdk](https://github.com/ps5-payload-dev/sdk) (John Törnblom), HarbourMasters,
-  Kenix3 and the libultraship contributors.
-- The Vulkan backend comes from libultraship commit `98f9a473` ("Implemented vulkan backend",
-  KiritoDv), cherry-picked onto Shipwright's libultraship pin, plus PS5_Ghostship's PS5 hunks.
+- [HarbourMasters](https://github.com/HarbourMasters/Shipwright): Ship of Harkinian, and
+  Kenix3 and the [libultraship](https://github.com/Kenix3/libultraship) contributors.
+- [griches/PS5_Ghostship](https://github.com/griches/PS5_Ghostship) (Gary Riches): the PS5
+  console layer and the libultraship Vulkan changes this port is built on.
+- [mihawk-99](https://github.com/mihawk-99) (Mihawk): PS5_Vulkan, PS5_Mesa (RADV on the
+  PS5) and PS5_PayloadSDK.
+- [ps5-payload-dev/sdk](https://github.com/ps5-payload-dev/sdk) (John Törnblom).
 
 ## Requirements
 
-**Build machine (Linux, x86-64):**
-- clang/LLVM 18+, cmake, ninja, python3, git, plus `ffmpeg` and ImageMagick for the title art
-- [PS5_PayloadSDK](https://github.com/mihawk-99), [PS5_Vulkan](https://github.com/mihawk-99/PS5_Vulkan)
-  and PS5_Mesa, checked out **beside** this folder, with RADV built
-  (`PS5_VulkanTemplate/ps5/tools/bootstrap.sh`)
+- A jailbroken PS5 running a homebrew environment (etaHEN or similar).
+- ShadowMountPlus or a similar tool that registers homebrew in
+  `/data/homebrew/` as a title, so **PPSA99320** ("Ship of Harkinian") appears on the home screen.
+- Your own Ocarina of Time ROM (`.z64`, `.n64` or `.v64`), in a version Ship of Harkinian
+  supports. A Master Quest ROM is optional.
 
-**Console:**
-- a PS5 running a homebrew environment (etaHEN or equivalent, after the exploit)
-- ShadowMountPlus, which registers `/data/homebrew/<TITLE_ID>` as a title and mounts `/data` into its sandbox
-- an FTP server on port 2121
-- optional: klogsrv on port 3232 for logs, and PS5_Vulkan's control helper on port 9111
+## Install
 
-## Layout
+**PS5 Homebrew Catalog (recommended, once listed):** find "Ship of Harkinian" in the
+catalog and install it.
 
-| Path | What |
-| --- | --- |
-| `vendor/shipwright` | Submodule: HarbourMasters/Shipwright at an upstream revision |
-| `ps5/patches/*.patch` | All PS5 changes to Shipwright, libultraship, torch and SDL. Vendor trees are never committed. |
-| `ps5/src/` | Console layer: start-up, data folder, shims, SDL drivers |
-| `ps5/cmake/ps5-game.cmake` | Injected after `project(Ship)`: SDL2, RADV, volk, shaderc, the link |
-| `ps5/tools/` | setup, build, assets, deploy and run scripts |
-| `ps5/sce_sys/`, `ps5/art/` | Title metadata (**PPSA99320**), icon and background with their sources |
-| `tools/ps5ctl/` | Headless Remote Play controller used for testing on hardware |
+**Manual install:**
 
-## Building
+1. Download `PPSA99320.zip` from the [Releases](https://github.com/damiantw/PS5_Shipwright/releases) page.
+2. Unzip it. It contains one folder, `PPSA99320`.
+3. Copy that folder to `/data/homebrew/PPSA99320` on the console, using whatever you like:
+   a file manager on the console, a USB drive, or an FTP client if your homebrew setup runs
+   an FTP server.
+4. Let ShadowMountPlus (or your tool) register it. "Ship of Harkinian" appears on the home screen.
 
-```sh
-git submodule update --init --recursive
-bash ps5/tools/build.sh     # setup-source.sh applies ps5/patches; then configures and builds soh
-bash ps5/tools/assets.sh    # soh.o2r and the extractor's yml (host compiler)
-```
+## First run
 
-The output is `dist/PPSA99320/`, containing `eboot.bin` (about 68 MB), `sce_sys/`, `sce_module/`,
-`soh.o2r` and `assets/`.
+1. Copy your ROM into **`/data/soh/`** on the console (create the folder if needed). The file
+   name doesn't matter; `.z64`, `.n64` and `.v64` (any byte order) are accepted. Add a Master
+   Quest ROM too if you have one.
+2. Start Ship of Harkinian.
 
-When you change files under `vendor/` (Shipwright, libultraship, torch), save them back into
-the patches before committing:
+When there is no `oot.o2r` or `oot-mq.o2r` in `/data/soh/`, the game looks for ROMs there,
+checks each one against the versions Ship of Harkinian supports, and converts it on the
+console with a progress bar (a few minutes). The result, `oot.o2r` (and `oot-mq.o2r`), is
+saved in `/data/soh/` and the game starts. Later launches skip this step. You can delete the
+ROM afterwards.
 
-```sh
-bash ps5/tools/setup-source.sh --save
-```
+If no supported ROM is found, the game shows a "Game files needed" message and exits. A ROM
+that was found but didn't match a supported version is named in the log (`/data/soh/logs/`).
 
-### Making oot.o2r from your own ROM
+**Alternative:** make `oot.o2r` on a PC with desktop Ship of Harkinian (or this repo's
+`ps5/tools/assets.sh`) and copy it to `/data/soh/`.
 
-```sh
-bash ps5/tools/assets.sh /path/to/your/OoT.z64 [/path/to/your/OoT-MQ.z64]
-```
-
-This writes `oot.o2r` (and `oot-mq.o2r`) to `game/PPSA99320/`, which is git-ignored. Use a ROM
-version that Shipwright supports (see Shipwright's docs for the accepted hashes). Copy the
-`.o2r` to the console's data folder (below). Do not commit or distribute it.
-
-## Installing / deploying
-
-```sh
-PS5_HOST=192.168.1.70 bash ps5/tools/deploy.sh
-```
-
-`deploy.sh` uses PS5_Vulkan's title-folder helper if the console answers on port 9111.
-Otherwise it falls back to plain FTP (`ps5/tools/ftp-deploy.py`, port 2121):
-- Only changed files are uploaded, judged by size; `eboot.bin` is always uploaded.
-- Each file goes to a temporary name and is then renamed into place.
-- `eboot.bin` and `param.json` go last.
-
-The first full upload includes about 20,000 small yml files and takes a long time over FTP.
-For later updates, use:
-
-```sh
-python3 ps5/tools/ftp-deploy.py --only eboot.bin --only sce_sys dist/PPSA99320
-```
-
-The title lives at `/data/homebrew/PPSA99320/`. ShadowMountPlus shows it as "Ship of Harkinian".
-Close the game before you overwrite `eboot.bin`.
+Never share your ROM or an `.o2r` made from it.
 
 ## Data folder
 
-Saves, settings, logs and game archives live **outside** the title folder, at:
+Everything that belongs to you lives in `/data/soh/`, outside the game folder, so updating
+or reinstalling the game never touches it:
 
 ```
 /data/soh/
-  oot.o2r, oot-mq.o2r     your archives (copy them here)
-  shipofharkinian.json    all settings (CVars, window/backend)
-  imgui.ini               menu window layout
-  Save/                   global.sav, file1.sav ... (game saves)
+  oot.o2r, oot-mq.o2r     game data made from your ROM
+  shipofharkinian.json    settings
+  imgui.ini               menu layout
+  Save/                   your save files
   logs/                   Ship of Harkinian.log
   mods/                   .o2r / .otr mods
-  .migrated               marker: old /app0/userdata contents were copied once
 ```
 
-Why `/data/soh`:
-- Reinstalling or replacing `/data/homebrew/PPSA99320` (a new build, a fresh FTP upload, a
-  ShadowMountPlus re-scan) never touches your saves or settings.
-- ShadowMountPlus mounts `/data` into the title's sandbox, so the path is real and writable
-  from inside the game.
-
-Details:
-- At start-up the game checks that the folder can be created and written. If it can't, the
-  game falls back to `/app0/userdata` (the old location inside the title folder).
-- On first run it copies an existing `/app0/userdata` across once. It never overwrites files.
-- To use another folder, add `PS5_DATA_DIR=/data/whatever` to `env.txt` in the title folder.
-
-Persistence was checked on hardware: save in game, close, redeploy a new `eboot.bin`,
-relaunch, load. The file and the rupee count survived.
+- Back up `Save/` (and `shipofharkinian.json`) to keep your progress and settings.
+- If `/data/soh` can't be created or written (for example, the game isn't running through
+  ShadowMountPlus), the game falls back to `userdata/` inside its own folder.
+- To use another folder, create `env.txt` in the game folder
+  (`/data/homebrew/PPSA99320/env.txt`) with a line such as `PS5_DATA_DIR=/data/mysoh`.
 
 ## Controls
 
-The game uses the DualSense with SoH's default N64 mapping. Cross is A, Circle/Square is B,
-Options is Start, and the right stick is the C buttons.
+The DualSense uses Ship of Harkinian's default N64 layout: Cross is A, Circle/Square is B,
+Options is Start and the right stick is the C buttons. You can remap everything in the menu.
 
-**Menu (SoH's ImGui settings menu):**
+**Settings menu:**
 
 | Button | Action |
 | --- | --- |
-| **Touchpad click** | open / close the menu (the same binding as PS5_Ghostship) |
-| D-pad / left stick | move focus (an amber frame marks the focused item) |
-| Cross | activate / enter a panel |
-| **Circle** | back out; closes the menu when nothing is active |
-| L1 / R1 | switch tabs (ImGui) |
+| Touchpad click | open / close the menu |
+| D-pad / left stick | move between items (amber frame shows focus) |
+| Cross | select / enter |
+| Circle | back; closes the menu when nothing is selected |
+| L1 / R1 | switch tabs |
 
-Controller navigation is on by default.
+The menu is sized for a TV (scale options 1.5x to 3.0x, "Large" by default), shows PS5
+button names, and hides PC-only options.
 
-**Console-friendly menu (in `ps5/patches`, behind `__PROSPERO__`):**
-- TV-sized scale. The fonts are rasterised at 3x so text stays sharp; the scale options are
-  1.5 / 2.0 / 2.5 / 3.0, with "Large" as the default.
-- Larger padding and spacing.
-- A high-contrast amber focus highlight.
-- Search lives in the sidebar, so the header tabs fit at TV scale.
-- PS5 button names (Cross, Circle, Square, Triangle, L1/R1/L2/R2, Options, Touchpad) in
-  the binding UI.
-- Desktop-only items are hidden: fullscreen toggles, "Open App Files Folder", the mouse-cursor
-  option and the controller-navigation toggle.
-- Existing configs are migrated once (`gSettings.PS5.MenuDefaults`).
+## Updating
 
-## Testing with ps5ctl
-
-`tools/ps5ctl/` drives the console over Remote Play from a Linux box, with no GUI. See its
-README; it needs pyremoteplay and an existing registration.
-
-```sh
-tools/ps5ctl/ps5ctl start            # connect (only while the console is on)
-tools/ps5ctl/ps5ctl press TOUCHPAD   # open the SoH menu
-tools/ps5ctl/ps5ctl stick left 0 -1 --hold 2000
-tools/ps5ctl/ps5ctl shot shot.png
-tools/ps5ctl/ps5ctl wake             # wake from rest mode; does nothing if already on
-```
-
-The Remote Play video lags several seconds (up to about 40 s while the game runs). Wait
-before you screenshot, and check each step before sending the next input.
-
-HDMI Device Link (CEC) is switched off on the test console, so `wake` does not turn on the TV.
+Install the new version from the Homebrew Catalog, or copy the new `PPSA99320` folder over
+the old one in `/data/homebrew/` (close the game first). Your saves, settings and `oot.o2r`
+in `/data/soh/` stay as they are.
 
 ## Known issues
 
 - The PS5 system UI (PS button, control center) is very sluggish while the game runs.
-- The home-screen tile can keep showing an old icon after `sce_sys` changes; the shell caches
-  title art. A console restart, or re-registering through ShadowMountPlus, refreshes it.
-- Graphics menu: "Renderer API" shows OpenGL although the backend is Vulkan (see
-  `Window.Backend` in the json), and "Allow multi-windows" is a desktop option. Leave both
-  alone.
-- In the menu, moving focus from the sidebar into the right-hand panel with the d-pad is
-  awkward (it is a separate child window).
-- Pad input can reach the game while the menu is open on the title screen (a Cross press can
-  start file select).
-- The sun / lens-flare depth fix (empty `GetPixelDepth` outside a frame) has not been checked
-  in a scene with the sun visible.
-- Network: `gethostbyname` is a stub, so use numeric addresses.
-- `package-release.sh` and `run.sh` are still PS5_Ghostship's and are untested.
+- The home-screen icon can keep showing an old picture after an update. Restart the console
+  or re-register the title in ShadowMountPlus.
+- Graphics menu: "Renderer API" says OpenGL though the game uses Vulkan, and "Allow
+  multi-windows" is a PC option. Leave both alone.
+- In the menu, moving from the sidebar into the right-hand panel with the d-pad is awkward.
+- On the title screen, a button press can reach the game while the menu is open (Cross may
+  open file select).
 
 ## Troubleshooting
 
-- **Crash at boot:** capture klog (`nc <console> 3232`). Crash addresses are the ELF address
-  plus 0x400000, so subtract that and run `llvm-addr2line -e build/game/soh/soh.elf`.
-- **"oot.o2r not found" or the game exits at once:** put `oot.o2r` in `/data/soh/`. Check that
-  klog shows `data folder: /data/soh`.
-- **Settings or saves "reset":** check whether klog reports the fallback `/app0/userdata`. That
-  means `/data/soh` wasn't writable (for example, ShadowMountPlus isn't running).
-- **The menu won't open:** click the touchpad itself (not a swipe). klog logs
-  `PS5 touch pad down/up`.
-- **build.sh fails on missing vendor trees:** run `git submodule update --init --recursive`.
-  Check that PS5_Vulkan, PS5_Mesa and PS5_PayloadSDK are beside this folder.
-- **Deploy hangs at 9111:** that helper is optional, and `deploy.sh` falls back to FTP.
-  `PS5_HOST` and `PS5_FTP_PORT` override the defaults.
+- **"Game files needed" at start:** put a supported ROM (or `oot.o2r`) in `/data/soh/` and
+  start again. Check `/data/soh/logs/Ship of Harkinian.log` for a ROM that was rejected.
+- **Saves or settings seem to reset:** the game probably couldn't use `/data/soh` and fell
+  back to its own folder. Make sure it's launched through ShadowMountPlus (or similar).
+- **The menu won't open:** click the touchpad (press it down; a swipe does nothing).
+- **Anything else:** the log is `/data/soh/logs/Ship of Harkinian.log`. Include it when you
+  open an [issue](https://github.com/damiantw/PS5_Shipwright/issues).
+
+## Building from source
+
+For developers. You need a Linux x86-64 machine with clang/LLVM 18+, cmake, ninja, python3,
+git, ffmpeg and ImageMagick, plus [PS5_PayloadSDK](https://github.com/mihawk-99),
+[PS5_Vulkan](https://github.com/mihawk-99/PS5_Vulkan) and PS5_Mesa checked out beside this
+folder, with RADV built.
+
+```sh
+git submodule update --init --recursive
+bash ps5/tools/build.sh     # applies ps5/patches, configures and builds
+bash ps5/tools/assets.sh    # builds soh.o2r
+```
+
+The output is `dist/PPSA99320/`. All PS5 changes to Shipwright, libultraship, torch and SDL
+are kept as patches in `ps5/patches/`; after editing files under `vendor/`, save them back with
+`bash ps5/tools/setup-source.sh --save`. The console-specific code is in `ps5/src/`.
+
+Never commit a ROM or an `.o2r` made from one; `.gitignore` blocks them.
 
 ## Licence
 
-GPL-3.0 as built: see [LICENSING.md](LICENSING.md).
+GPL-3.0. See [LICENSING.md](LICENSING.md).
