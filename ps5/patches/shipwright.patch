@@ -91,7 +91,7 @@ index baf3dc261..82cb18d59 100644
  #endif
  }
 diff --git a/soh/soh/Extractor/Extract.cpp b/soh/soh/Extractor/Extract.cpp
-index 89da6e1b7..44a7cb1e9 100644
+index 89da6e1b7..f62909a1c 100644
 --- a/soh/soh/Extractor/Extract.cpp
 +++ b/soh/soh/Extractor/Extract.cpp
 @@ -622,8 +622,19 @@ const char* Extractor::GetTorchVersionDir() const {
@@ -114,7 +114,7 @@ index 89da6e1b7..44a7cb1e9 100644
  
      // create 6 random alphanumeric characters
      static const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-@@ -639,6 +650,79 @@ std::string Extractor::Mkdtemp() {
+@@ -639,6 +650,87 @@ std::string Extractor::Mkdtemp() {
      return tmppath;
  }
  
@@ -123,8 +123,11 @@ index 89da6e1b7..44a7cb1e9 100644
 +#include <sys/stat.h>
 +// PS5: the extractor's recipes can ship as one assets.zip beside eboot.bin (thousands of
 +// small files are slow to copy to a console). Unpacked once into <exportdir>/assets, stamped
-+// with the zip's size and time; returns that folder, or "" when there is no zip.
-+static std::string Ps5UnpackAssetsZip(const std::string& installPath, const std::string& exportdir) {
++// with the zip's size, time and ROM version; returns that folder, or "" when there is no zip.
++// Only the top-level files and <versionDir>/ are unpacked: the zip holds every ROM version
++// (~20k files) and the console writes ~2k small files a minute.
++static std::string Ps5UnpackAssetsZip(const std::string& installPath, const std::string& exportdir,
++                                      const std::string& versionDir) {
 +    const std::string zipPath = installPath + "/assets.zip";
 +    struct stat st;
 +    if (stat(zipPath.c_str(), &st) != 0) {
@@ -132,8 +135,9 @@ index 89da6e1b7..44a7cb1e9 100644
 +    }
 +    const std::string outDir = exportdir + "/assets";
 +    const std::string stampPath = outDir + "/.zipstamp";
-+    char stamp[64];
-+    snprintf(stamp, sizeof(stamp), "%lld %lld", (long long)st.st_size, (long long)st.st_mtime);
++    char stamp[128];
++    snprintf(stamp, sizeof(stamp), "%lld %lld %s", (long long)st.st_size, (long long)st.st_mtime,
++             versionDir.c_str());
 +    {
 +        std::ifstream in(stampPath);
 +        std::string have;
@@ -166,6 +170,10 @@ index 89da6e1b7..44a7cb1e9 100644
 +        if (rel.empty()) {
 +            continue;
 +        }
++        const size_t slash = rel.find('/');
++        if (slash != std::string::npos && rel.compare(0, slash, versionDir) != 0) {
++            continue; // another ROM version's recipes
++        }
 +        const std::filesystem::path dst = std::filesystem::path(outDir) / rel;
 +        if (rel.back() == '/') {
 +            std::filesystem::create_directories(dst, ec);
@@ -194,13 +202,14 @@ index 89da6e1b7..44a7cb1e9 100644
  static void MessageboxWorker();
  
  bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::atomic<size_t>* extractCount,
-@@ -648,6 +732,14 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+@@ -648,6 +740,15 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
  
      std::string srcDir = std::filesystem::absolute(installPath).string() + "/assets";
      exportdir = std::filesystem::absolute(exportdir).string();
 +#ifdef __PROSPERO__
 +    {
-+        std::string unpacked = Ps5UnpackAssetsZip(std::filesystem::absolute(installPath).string(), exportdir);
++        std::string unpacked = Ps5UnpackAssetsZip(std::filesystem::absolute(installPath).string(), exportdir,
++                                                   GetTorchVersionDir());
 +        if (!unpacked.empty()) {
 +            srcDir = unpacked;
 +        }
@@ -209,7 +218,7 @@ index 89da6e1b7..44a7cb1e9 100644
      // Work this out in the temporary folder
      std::string tempdir = Mkdtemp();
  
-@@ -655,7 +747,13 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+@@ -655,7 +756,13 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
      *extractCount = 0;
  
      // config.yml decides whether this is oot.o2r or oot-mq.o2r.
