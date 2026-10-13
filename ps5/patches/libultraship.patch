@@ -7343,7 +7343,7 @@ index 8235c8ad..9eb40462 100644
  
      loader.Init(temp);
 diff --git a/src/ship/window/gui/Gui.cpp b/src/ship/window/gui/Gui.cpp
-index 1f9279bd..9a32003a 100644
+index 1f9279bd..e1c0f625 100644
 --- a/src/ship/window/gui/Gui.cpp
 +++ b/src/ship/window/gui/Gui.cpp
 @@ -1,5 +1,13 @@
@@ -7460,3 +7460,28 @@ index 1f9279bd..9a32003a 100644
  
      // Mac interprets this as cmd+r when io.ConfigMacOSXBehavior is on (on by default)
      if ((ImGui::IsKeyDown(ImGuiKey_LeftCtrl) || ImGui::IsKeyDown(ImGuiKey_RightCtrl)) &&
+@@ -291,7 +376,24 @@ void Gui::StartFrame() {
+     ImGui::NewFrame();
+ }
+ 
++#ifdef __PROSPERO__
++extern "C" float ps5_fps_avg, ps5_fps_low, ps5_frame_max;
++#endif
++
+ void Gui::EndFrame() {
++#ifdef __PROSPERO__
++    // gPS5.FpsOverlay=1: the last 10 s window's numbers (see gfx_vulkan.cpp), top-left
++    if (Ship::Context::GetRawInstance()->GetConsoleVariables()->GetInteger("gPS5.FpsOverlay", 0)) {
++        const float f = ImGui::GetIO().Framerate;
++        char text[96];
++        snprintf(text, sizeof(text), "%.0f fps  (10s avg %.1f, 1%% low %.1f, max %.1f ms)", f, ps5_fps_avg,
++                 ps5_fps_low, ps5_frame_max);
++        ImDrawList* dl = ImGui::GetForegroundDrawList();
++        dl->AddRectFilled(ImVec2(8, 8), ImVec2(16 + ImGui::CalcTextSize(text).x, 14 + ImGui::GetFontSize()),
++                          IM_COL32(0, 0, 0, 160));
++        dl->AddText(ImVec2(12, 10), IM_COL32(255, 255, 0, 255), text);
++    }
++#endif
+     // Draw the ImGui "viewports" which are the floating windows.
+     ImGui::Render();
+     ImGuiRenderDrawData(ImGui::GetDrawData());
