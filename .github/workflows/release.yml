@@ -60,7 +60,7 @@ jobs:
 
       - name: Toolchain cache
         id: toolchain
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             PS5_Shipwright/.deps
@@ -107,6 +107,18 @@ jobs:
           git clone --filter=blob:none https://github.com/mihawk-99/PS5_Mesa.git PS5_Mesa
           git -C PS5_Mesa checkout -q "$PS5_MESA_REV"
           bash PS5_Vulkan/tools/build-radv.sh release
+
+      # saved explicitly (not in the post step) so a later failure does not discard a 40-minute RADV build
+      - name: Save toolchain cache (RADV)
+        if: steps.toolchain.outputs.cache-matched-key == '' && hashFiles('PS5_Vulkan/.deps/native/radv-release/PROVENANCE.txt') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            PS5_Shipwright/.deps
+            PS5_Vulkan/.deps/native/radv-release
+            PS5_Vulkan/.deps/native/zlib
+            PS5_Vulkan/.deps/native/ps5-payload-sdk
+          key: ps5-toolchain-${{ env.PAYLOAD_SDK_REV }}-${{ env.PS5_VULKAN_REV }}-${{ env.PS5_MESA_REV }}-${{ hashFiles('PS5_Shipwright/ps5/tools/setup-*.sh', 'PS5_Shipwright/ps5/patches/sdl.patch') }}-radv-${{ github.run_id }}
 
       - name: libc.prx (PS5_Vulkan clean-room runtime, checksum-verified)
         run: |

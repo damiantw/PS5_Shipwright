@@ -3638,10 +3638,10 @@ index 15c5415f..6f2942ff 100644
          if (mVsyncEnabled) {
 diff --git a/src/fast/backends/gfx_vulkan.cpp b/src/fast/backends/gfx_vulkan.cpp
 new file mode 100644
-index 00000000..f25e55c2
+index 00000000..acd2cd3a
 --- /dev/null
 +++ b/src/fast/backends/gfx_vulkan.cpp
-@@ -0,0 +1,2582 @@
+@@ -0,0 +1,2613 @@
 +//
 +//  gfx_vulkan.cpp
 +//  libultraship
@@ -3680,6 +3680,22 @@ index 00000000..f25e55c2
 +#include <cstring>
 +
 +#include <SDL2/SDL.h>
++#ifdef __PROSPERO__
++#include <sys/resource.h>
++extern "C" {
++struct Ps5MallocManagedSize { // SceLibcMallocManagedSize
++    uint16_t size;
++    uint16_t version;
++    uint32_t reserved1;
++    size_t maxSystemSize;
++    size_t currentSystemSize;
++    size_t maxInuseSize;
++    size_t currentInuseSize;
++};
++int malloc_stats_fast(Ps5MallocManagedSize* mmsize);
++int32_t sceKernelAvailableFlexibleMemorySize(size_t* available);
++}
++#endif
 +#include <SDL2/SDL_vulkan.h>
 +#include <shaderc/shaderc.hpp>
 +#include <spdlog/spdlog.h>
@@ -6050,6 +6066,21 @@ index 00000000..f25e55c2
 +                SPDLOG_INFO("perf: {}x{} avg {:.1f} fps, 1% low {:.1f} fps, max {:.1f} ms, >20ms {}, >40ms {}, {} frames",
 +                            mSwapchainExtent.width, mSwapchainExtent.height, ps5_fps_avg, ps5_fps_low, ps5_frame_max,
 +                            over20, over40, n);
++#ifdef __PROSPERO__
++                {
++                    // memory headroom: libc heap in use / held from the system, peak RSS, flexible memory free
++                    Ps5MallocManagedSize mm {};
++                    mm.size = sizeof(mm);
++                    mm.version = 1;
++                    malloc_stats_fast(&mm);
++                    size_t alloc = mm.currentInuseSize, resident = mm.currentSystemSize, avail = 0;
++                    sceKernelAvailableFlexibleMemorySize(&avail);
++                    struct rusage ru {};
++                    getrusage(RUSAGE_SELF, &ru);
++                    SPDLOG_INFO("perf: mem heap {} MB, sys {} MB, maxrss {} MB, flex free {} MB", alloc >> 20,
++                                resident >> 20, (long)ru.ru_maxrss >> 10, avail >> 20);
++                }
++#endif
 +                ms.clear();
 +                since = now;
 +            }
