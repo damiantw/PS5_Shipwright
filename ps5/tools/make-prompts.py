@@ -7,7 +7,8 @@ pinned from tanuki-billie/kenney-input-prompts 49f37cc). No game data: only each
 texture's name and size are needed, and they are listed below (the same in every
 supported ROM). Approach after mshivam019/oot64-ps5 tools/make-playstation-prompts.py
 (GPL-3.0). Layout = this port's PS5 defaults: Cross=A, Circle=B, L1=L, R2=R, L2=Z,
-D-pad=C buttons (the right stick is the camera), Options=Start.
+D-pad=C buttons (the right stick is the camera), Options=Start. The file-select
+line's words use Pillow's built-in font (Pillow 10.1 or later).
 
     ps5/tools/make-prompts.py OUT.o2r [--preview sheet.png]
 """
@@ -44,6 +45,9 @@ TEXTURES = {
     "parameter_static/gEmptyCLeftArrowTex": (IA8, 32, 32, "dpad_left"),
     "parameter_static/gEmptyCDownArrowTex": (IA8, 32, 32, "dpad_down"),
     "parameter_static/gEmptyCRightArrowTex": (IA8, 32, 32, "dpad_right"),
+    # file select's "A-Decide / B-Cancel" line
+    "title_static/gFileSelControlsENGTex": (IA8, 144, 16, ("line", [("button_cross", "Decide"),
+                                                                   ("button_circle", "Cancel")])),
 }
 BITS = {1: 32, 2: 16, 3: 4, 4: 8, 5: 4, 6: 8, 7: 4, 8: 8, 9: 16}
 SCALE = 8
@@ -72,6 +76,23 @@ def arrow(side, prompt, size):
     return out
 
 
+def line(entries, size):
+    # glyph + word pairs, centred; white, the game tints it like the original line
+    from PIL import ImageFont
+    w, h = size
+    font = ImageFont.load_default(size=int(h * 0.8))
+    draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    gap, pad = int(h * 0.25), int(h * 0.9)
+    widths = [h + gap + int(draw.textlength(word, font=font)) for _, word in entries]
+    x = (w - (sum(widths) + pad * (len(entries) - 1))) // 2
+    out = Image.new("RGBA", size)
+    for (glyph, word), width in zip(entries, widths):
+        out.alpha_composite(icon(glyph, (h, h), 0.95), (x, 0))
+        ImageDraw.Draw(out).text((x + h + gap, h // 2), word, font=font, fill="white", anchor="lm")
+        x += width + pad
+    return out
+
+
 def render(spec, size):
     if isinstance(spec, list):
         out = Image.new("RGBA", size)
@@ -79,6 +100,8 @@ def render(spec, size):
         for i, name in enumerate(spec):
             out.alpha_composite(icon(name, cell), (i * cell[0], 0))
         return out
+    if isinstance(spec, tuple) and spec[0] == "line":
+        return line(spec[1], size)
     if isinstance(spec, tuple):
         return arrow(spec[0], spec[1], size)
     return icon(spec, size)

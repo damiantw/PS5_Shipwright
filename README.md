@@ -84,8 +84,24 @@ or reinstalling the game never touches it:
 
 ## Controls
 
-The DualSense uses Ship of Harkinian's default N64 layout: Cross is A, Circle/Square is B,
-Options is Start and the right stick is the C buttons. You can remap everything in the menu.
+| Button | Game |
+| --- | --- |
+| Left stick | move |
+| Right stick | camera (free look); aims in first-person view |
+| Cross / Circle | A / B |
+| D-pad | C buttons (up: first-person view / Navi) |
+| L2 / R2 / L1 | Z (target) / R (shield) / L |
+| Options | Start |
+
+The right stick turns the camera (Ship of Harkinian's Free Look, slightly faster than its
+default) and the C buttons are on the D-pad; an existing configuration is switched to this
+once, on the first start of this version. Change it under **Settings > Controls** (camera
+speed, invert) or remap everything in the controller bindings.
+
+Button prompts in the game (dialogue, the HUD's C buttons, pause menu, ocarina, file select)
+show PlayStation buttons: Cross, Circle, L1/L2/R2 and the D-pad. They also win over a texture
+pack's buttons. Turn them off under **Settings > General > PlayStation Button Prompts**
+(applies after a restart).
 
 **Settings menu:**
 
@@ -135,6 +151,10 @@ effect can stutter once and not afterwards.
 
 - The Select Item page of the pause menu shows the game world behind the item grid instead
   of the dark background.
+- The button prompts follow the default layout above; after remapping buttons the in-game
+  glyphs still show the default buttons.
+- The HUD's A and B buttons keep the game's action words (no glyph is drawn on them in the
+  original game either).
 
 ## Troubleshooting
 
