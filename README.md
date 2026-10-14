@@ -47,8 +47,16 @@ console with a progress bar (about 30 seconds). The result, `oot.o2r` (and `oot-
 saved in `/data/soh/` and the game starts. Later launches skip this step. You can delete the
 ROM afterwards.
 
-If no supported ROM is found, the game shows a "Game files needed" message and exits. A ROM
-that was found but didn't match a supported version is named in the log (`/data/soh/logs/`).
+Extensions are matched in any case (`OOT.Z64` works) and spaces in the name are fine. If
+several ROMs of the same version are present, the first is converted and the others are
+skipped.
+
+If no supported ROM is found, the game shows a "Game files needed" message listing every file
+it found in `/data/soh/` that it could not use, with the reason (for example "is 8.0 MB; an
+OoT ROM is 32, 54 or 64 MB (truncated?)" or "checksum not recognised; damaged or another
+version"). Press Cross to close it (the first press may only wake the controller; press again).
+The same reasons are written to `/data/soh/logs/Ship of Harkinian.log` as `PS5: ROM rejected:`
+lines.
 
 **Alternative:** make `oot.o2r` on a PC with desktop Ship of Harkinian (or this repo's
 `ps5/tools/assets.sh`) and copy it to `/data/soh/`.
@@ -125,17 +133,14 @@ effect can stutter once and not afterwards.
 
 ## Known issues
 
-- The PS5 system UI (PS button, control center) can be slow to respond while the game runs.
-- In the menu, moving from the sidebar into the right-hand panel with the d-pad can take
-  extra presses.
-- The developer warp screen (Dev Tools > General > Debug mode) shows a black screen.
 - The Select Item page of the pause menu shows the game world behind the item grid instead
   of the dark background.
 
 ## Troubleshooting
 
 - **"Game files needed" at start:** put a supported ROM (or `oot.o2r`) in `/data/soh/` and
-  start again. Check `/data/soh/logs/Ship of Harkinian.log` for a ROM that was rejected.
+  start again. The message lists each ROM it rejected and why; a truncated copy or one with
+  an unknown checksum needs a fresh dump.
 - **Saves or settings seem to reset:** the game probably couldn't use `/data/soh` and fell
   back to its own folder. Make sure it's launched through ShadowMountPlus (or similar).
 - **Anything else:** the log is `/data/soh/logs/Ship of Harkinian.log`. Include it when you
