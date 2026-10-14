@@ -11049,7 +11049,7 @@ index 8235c8ad..9eb40462 100644
  
      loader.Init(temp);
 diff --git a/src/ship/window/gui/Gui.cpp b/src/ship/window/gui/Gui.cpp
-index 1f9279bd..265773fd 100644
+index 1f9279bd..eeddd51f 100644
 --- a/src/ship/window/gui/Gui.cpp
 +++ b/src/ship/window/gui/Gui.cpp
 @@ -1,5 +1,14 @@
@@ -11121,7 +11121,7 @@ index 1f9279bd..265773fd 100644
                     GetMenuBar()) {
              GetMenuBar()->ToggleVisibility();
          }
-@@ -243,6 +290,70 @@ void Gui::DrawMenu() {
+@@ -243,6 +290,73 @@ void Gui::DrawMenu() {
              mImGuiIo->ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
          }
      }
@@ -11129,7 +11129,10 @@ index 1f9279bd..265773fd 100644
 +    // PlayStation 5: the pad is the only input, so gamepad navigation follows the
 +    // menu's visibility every frame (a toggle's visibility can settle a frame late).
 +    {
-+        bool nav = GetMenuOrMenubarVisible();
++        // ...and while a modal popup is up (a ROM error before the game starts has no menu
++        // behind it: without this its OK button cannot be reached and the app is stuck)
++        bool nav = GetMenuOrMenubarVisible() ||
++                   ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
 +        if (nav) {
 +            mImGuiIo->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 +        } else {
@@ -11192,7 +11195,7 @@ index 1f9279bd..265773fd 100644
  
      // Mac interprets this as cmd+r when io.ConfigMacOSXBehavior is on (on by default)
      if ((ImGui::IsKeyDown(ImGuiKey_LeftCtrl) || ImGui::IsKeyDown(ImGuiKey_RightCtrl)) &&
-@@ -291,7 +402,24 @@ void Gui::StartFrame() {
+@@ -291,7 +405,24 @@ void Gui::StartFrame() {
      ImGui::NewFrame();
  }
  

@@ -91,7 +91,7 @@ index baf3dc261..82cb18d59 100644
  #endif
  }
 diff --git a/soh/soh/Extractor/Extract.cpp b/soh/soh/Extractor/Extract.cpp
-index 89da6e1b7..131bcadc8 100644
+index 89da6e1b7..97680e552 100644
 --- a/soh/soh/Extractor/Extract.cpp
 +++ b/soh/soh/Extractor/Extract.cpp
 @@ -1,3 +1,5 @@
@@ -100,7 +100,87 @@ index 89da6e1b7..131bcadc8 100644
  #ifdef _WIN32
  #include <Windows.h>
  #include <winuser.h>
-@@ -622,8 +624,19 @@ const char* Extractor::GetTorchVersionDir() const {
+@@ -226,6 +228,14 @@ void Extractor::FilterRoms(std::vector<std::string>& roms, RomSearchMode searchM
+     }
+ }
+ 
++#ifdef __PROSPERO__
++// PlayStation 5: ROM extensions match in any case (OOT.Z64 is found too)
++static bool PS5IsRomExt(std::string ext) {
++    for (auto& c : ext) c = (char)tolower((unsigned char)c);
++    return ext == ".z64" || ext == ".n64" || ext == ".v64";
++}
++#endif
++
+ void Extractor::GetRoms(std::vector<std::string>& roms) {
+ #ifdef _WIN32
+     WIN32_FIND_DATAA ffd;
+@@ -260,7 +270,11 @@ void Extractor::GetRoms(std::vector<std::string>& roms) {
+ 
+                 // Get the position of the extension character.
+                 char* ext = strrchr(dir->d_name, '.');
++                #ifdef __PROSPERO__
++                if (ext != NULL && PS5IsRomExt(ext)) {
++#else
+                 if (ext != NULL && (strcmp(ext, ".z64") == 0 || strcmp(ext, ".n64") == 0 || strcmp(ext, ".v64") == 0)) {
++#endif
+                     roms.push_back(fullPath);
+                 }
+             }
+@@ -271,8 +285,12 @@ void Extractor::GetRoms(std::vector<std::string>& roms) {
+     for (const auto& file : std::filesystem::directory_iterator(mSearchPath)) {
+         if (file.is_directory())
+             continue;
++#ifdef __PROSPERO__
++        if (PS5IsRomExt(file.path().extension().string())) {
++#else
+         if ((file.path().extension() == ".n64") || (file.path().extension() == ".z64") ||
+             (file.path().extension() == ".v64")) {
++#endif
+             roms.push_back((file.path()));
+         }
+     }
+@@ -467,6 +485,39 @@ bool Extractor::ManuallySearchForRomMatchingType(RomSearchMode searchMode) {
+ }
+ 
+ bool Extractor::RunFileStandalone(std::string rom) {
++#ifdef __PROSPERO__
++    // PlayStation 5: the same checks, no message boxes, and the reason kept for the screen and the log
++    mLastError.clear();
++    if (std::filesystem::is_directory(rom)) {
++        mLastError = "is a folder";
++        return false;
++    }
++    if (!PS5IsRomExt(std::filesystem::path(rom).extension().string())) {
++        mLastError = "is not a .z64, .n64 or .v64 file";
++        return false;
++    }
++    SetRomInfo(rom);
++    if (!ValidateRomSize()) {
++        char buf[96];
++        snprintf(buf, sizeof(buf), "is %.1f MB; an OoT ROM is 32, 54 or 64 MB (truncated?)",
++                 (double)mCurRomSize / (1024.0 * 1024.0));
++        mLastError = buf;
++        return false;
++    }
++    if (!ReadRom()) {
++        mLastError = "could not be read";
++        return false;
++    }
++    if (!ValidateNotCompressed()) {
++        mLastError = "is compressed; use an uncompressed ROM";
++        return false;
++    }
++    if (!ValidateAndFixRom()) {
++        mLastError = "is not a supported Ocarina of Time ROM (checksum not recognised; damaged or another version)";
++        return false;
++    }
++    return true;
++#endif
+     if (std::filesystem::is_directory(rom)) {
+         return false;
+     }
+@@ -622,8 +673,19 @@ const char* Extractor::GetTorchVersionDir() const {
      }
  }
  
@@ -120,7 +200,7 @@ index 89da6e1b7..131bcadc8 100644
  
      // create 6 random alphanumeric characters
      static const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-@@ -639,6 +652,109 @@ std::string Extractor::Mkdtemp() {
+@@ -639,6 +701,109 @@ std::string Extractor::Mkdtemp() {
      return tmppath;
  }
  
@@ -230,7 +310,7 @@ index 89da6e1b7..131bcadc8 100644
  static void MessageboxWorker();
  
  bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::atomic<size_t>* extractCount,
-@@ -648,6 +764,18 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+@@ -648,6 +813,18 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
  
      std::string srcDir = std::filesystem::absolute(installPath).string() + "/assets";
      exportdir = std::filesystem::absolute(exportdir).string();
@@ -249,7 +329,7 @@ index 89da6e1b7..131bcadc8 100644
      // Work this out in the temporary folder
      std::string tempdir = Mkdtemp();
  
-@@ -655,7 +783,15 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+@@ -655,7 +832,15 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
      *extractCount = 0;
  
      // config.yml decides whether this is oot.o2r or oot-mq.o2r.
@@ -265,7 +345,7 @@ index 89da6e1b7..131bcadc8 100644
      bool success = !archiveName.empty();
  
      std::error_code ec;
-@@ -668,6 +804,10 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+@@ -668,6 +853,10 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
          }
      }
  
@@ -276,6 +356,21 @@ index 89da6e1b7..131bcadc8 100644
      std::filesystem::remove_all(tempdir, ec);
  
      return success;
+diff --git a/soh/soh/Extractor/Extract.h b/soh/soh/Extractor/Extract.h
+index aa6674bde..eba03f84d 100644
+--- a/soh/soh/Extractor/Extract.h
++++ b/soh/soh/Extractor/Extract.h
+@@ -63,6 +63,10 @@ class Extractor {
+     void SetSearchPath(const std::string& path);
+     void GetRoms(std::vector<std::string>& roms);
+     bool RunFileStandalone(std::string file);
++#ifdef __PROSPERO__
++    // why the last RunFileStandalone call rejected its file (PS5 shows it on screen)
++    std::string mLastError;
++#endif
+     bool Run(std::string searchPath, RomSearchMode searchMode = RomSearchMode::Both);
+     bool CallTorch(std::string installPath, std::string exportdir, std::atomic<size_t>* extractCount,
+                    std::atomic<size_t>* totalExtract);
 diff --git a/soh/soh/Extractor/TorchExtract.cpp b/soh/soh/Extractor/TorchExtract.cpp
 index e3a387749..497af0092 100644
 --- a/soh/soh/Extractor/TorchExtract.cpp
@@ -313,7 +408,7 @@ index e3a387749..497af0092 100644
      }
  
 diff --git a/soh/soh/OTRGlobals.cpp b/soh/soh/OTRGlobals.cpp
-index d336c3c5b..a52adbf63 100644
+index d336c3c5b..31f74faa9 100644
 --- a/soh/soh/OTRGlobals.cpp
 +++ b/soh/soh/OTRGlobals.cpp
 @@ -4,6 +4,8 @@
@@ -389,7 +484,30 @@ index d336c3c5b..a52adbf63 100644
      ScaleImGui();
  }
  
-@@ -587,6 +633,17 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -408,7 +454,22 @@ static bool RemoveArchiveAcrossAppDirs(const std::string& fileName) {
+     return !std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs(fileName, appShortName));
+ }
+ 
++#ifdef __PROSPERO__
++// PlayStation 5: ROMs found in /data/soh/ that could not be used, with the reason, for the screen
++static std::string gPS5RejectedRoms;
++#endif
++
+ void OTRGlobals::RunExtract(int argc, char* argv[]) {
++#ifdef __PROSPERO__
++    // PlayStation 5: start the log file now, so the ROM checks below (a rejected file and why)
++    // reach /data/soh/logs/ even when the app then exits; Initialize() keeps this logger
++    {
++        auto level = static_cast<spdlog::level::level_enum>(
++            CVarGetInteger(CVAR_DEVELOPER_TOOLS("LogLevel"), spdlog::level::info));
++        context->InitLogging(level, level);
++        Ship::Context::GetRawInstance()->GetLogger()->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
++    }
++#endif
+     bool extractDone = false;
+     ExtractSteps extractStep = ES_PORT_ARCHIVE;
+     WindowsSteps windowsStep = WS_TEMP;
+@@ -587,6 +648,17 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
              case ES_EXTRACT_ARGS: {
  #if !defined(__SWITCH__) && !defined(__WIIU__)
                  if (args.empty()) {
@@ -407,7 +525,37 @@ index d336c3c5b..a52adbf63 100644
                      SohGui::RegisterPopup(
                          "Run Ship of Harkinian", "All files have been processed. Run SoH?", "Yes", "No",
                          [&]() {
-@@ -644,6 +701,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -609,6 +681,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                 if (extract.RunFileStandalone(file)) {
+                     bool doExtract = true;
+                     std::string archive = (extract.IsMasterQuest() ? "oot-mq.o2r" : "oot.o2r");
++#ifdef __PROSPERO__
++                    if (std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) + "/" + archive)) {
++                        // a second ROM of a version already converted (or converted a moment ago)
++                        SPDLOG_INFO("PS5: ROM skipped: {} ({} already exists)", file, archive);
++                        break;
++                    }
++                    SPDLOG_INFO("PS5: converting {} to {}", file, archive);
++#endif
+                     if (std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) + "/" + archive)) {
+                         std::string msg = "Archive for current ROM, " + archive + ", already exists.\nExtract again?";
+                         SohGui::RegisterPopup("Confirm Re-extract", msg.c_str(), "Yes", "No", [&]() {
+@@ -626,6 +706,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                         });
+                     }
+                 } else {
++#ifdef __PROSPERO__
++                    // PlayStation 5: log it and list it on the "Game files needed" screen if
++                    // nothing usable was found, rather than one popup per file
++                    SPDLOG_WARN("PS5: ROM rejected: {} {}", file, extract.mLastError);
++                    gPS5RejectedRoms += "\n- " + std::filesystem::path(file).filename().string() + "\n   " +
++                                        extract.mLastError;
++                    break;
++#endif
+                     bool open = true;
+                     std::string msg = "File\n" + std::string(file) + "\nis not a ROM or does not match supported ROMs.";
+                     SohGui::RegisterPopup("SoH ROM Error", msg.c_str());
+@@ -644,6 +732,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                              std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs("oot.o2r", appShortName));
  
                          if (!ootO2RExists) {
@@ -419,7 +567,7 @@ index d336c3c5b..a52adbf63 100644
                              SohGui::RegisterPopup(
                                  "No O2R Files", "No O2R files found. Generate one now?", "Yes", "No",
                                  [&]() { promptStep = PS_LOCAL; }, [&]() { exit(0); });
-@@ -661,6 +723,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -661,6 +754,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                              extract.GetRoms(args);
                          }
                          if (!args.empty()) {
@@ -433,7 +581,7 @@ index d336c3c5b..a52adbf63 100644
                              promptStep = PS_WAIT;
                              SohGui::RegisterPopup(
                                  "ROMs found", "ROMs found in application directory. Would you like to process them?",
-@@ -672,6 +741,20 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -672,6 +772,24 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                          continue;
                      }
                      case PS_FIRST: {
@@ -441,20 +589,24 @@ index d336c3c5b..a52adbf63 100644
 +                        // PlayStation 5: no file dialog. The ROM is found in the title's folder
 +                        // (PS_LOCAL) or not at all.
 +                        promptStep = PS_WAIT;
-+                        SohGui::RegisterPopup("Game files needed",
-+                                              "This needs your own copy of Ocarina of Time.\n\n"
++                        {
++                            std::string msg = "This needs your own copy of Ocarina of Time.\n\n"
 +                                              "Copy a supported ROM (.z64, .n64 or .v64; vanilla and/or\n"
 +                                              "Master Quest) to /data/soh/ on the console and start the\n"
-+                                              "game again: it is converted on the console (a few minutes).\n\n"
-+                                              "A ROM that was found but did not match a supported version\n"
-+                                              "is named in the log, /data/soh/logs/.",
-+                                              "OK", "", [&]() { exit(0); });
++                                              "game again: it is converted on the console (a few minutes).";
++                            if (!gPS5RejectedRoms.empty()) {
++                                msg += "\n\nFound in /data/soh/ but not usable:" + gPS5RejectedRoms;
++                            }
++                            SPDLOG_WARN("PS5: no usable ROM and no oot.o2r / oot-mq.o2r");
++                            spdlog::default_logger()->flush();
++                            SohGui::RegisterPopup("Game files needed", msg, "OK", "", [&]() { exit(0); });
++                        }
 +                        continue;
 +#endif
                          if (!extract.ManuallySearchForRomMatchingType(RomSearchMode::Both)) {
                              promptStep = PS_FILE_CHECK;
                              continue;
-@@ -1007,7 +1090,11 @@ void OTRGlobals::ScaleImGui() {
+@@ -1007,7 +1125,11 @@ void OTRGlobals::ScaleImGui() {
      float scale = imguiScaleOptionToValue[imGuiScaleIndex];
      float newScale = scale / previousImGuiScale;
      ImGui::GetStyle().ScaleAllSizes(newScale);
@@ -466,7 +618,7 @@ index d336c3c5b..a52adbf63 100644
      previousImGuiScale = scale;
      previousImGuiScaleIndex = imGuiScaleIndex;
  }
-@@ -1519,6 +1606,102 @@ static void SetAppImageHome() {
+@@ -1519,6 +1641,102 @@ static void SetAppImageHome() {
  }
  #endif
  
@@ -569,7 +721,7 @@ index d336c3c5b..a52adbf63 100644
  extern "C" void InitOTR(int argc, char* argv[]) {
  #ifdef __linux__
      SetAppImageHome();
-@@ -1527,6 +1710,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
+@@ -1527,6 +1745,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
      OTRGlobals::Instance->RunExtract(argc, argv);
  
      OTRGlobals::Instance->Initialize();
@@ -579,7 +731,7 @@ index d336c3c5b..a52adbf63 100644
      CustomMessageManager::Instance = new CustomMessageManager();
      ItemTableManager::Instance = new ItemTableManager();
      GameInteractor::Instance = new GameInteractor();
-@@ -1897,6 +2083,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
+@@ -1897,6 +2118,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
  std::map<std::string, SoundFontSample*> cachedCustomSFs;
  
  ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool isJapaneseFont) {
@@ -829,6 +981,27 @@ index 476f99f3f..6a9ad3ab2 100644
      AddWidget(path, "Texture Filter (Needs reload)", WIDGET_CVAR_COMBOBOX)
          .CVar(CVAR_TEXTURE_FILTER)
          .RaceDisable(false)
+diff --git a/soh/soh/SohGui/SohModals.cpp b/soh/soh/SohGui/SohModals.cpp
+index 8b95fcbd3..3609d9532 100644
+--- a/soh/soh/SohGui/SohModals.cpp
++++ b/soh/soh/SohGui/SohModals.cpp
+@@ -46,7 +46,15 @@ void SohModalWindow::DrawElement() {
+                                        ImGuiWindowFlags_NoSavedSettings)) {
+             ImGui::Text("%s", curModal.message_.c_str());
+             UIWidgets::PushStyleButton(THEME_COLOR);
+-            if (ImGui::Button(curModal.button1_.c_str())) {
++            bool pressed1 = ImGui::Button(curModal.button1_.c_str());
++#ifdef __PROSPERO__
++            // PlayStation 5: Cross answers with the first button until the pad has moved focus
++            // (the popup often opens before pad navigation, so nothing would be focused yet)
++            if (!ImGui::IsAnyItemFocused() && ImGui::IsKeyPressed(ImGuiKey_GamepadFaceDown, false)) {
++                pressed1 = true;
++            }
++#endif
++            if (pressed1) {
+                 if (curModal.button1callback_ != nullptr) {
+                     curModal.button1callback_();
+                 }
 diff --git a/soh/soh/frame_interpolation.cpp b/soh/soh/frame_interpolation.cpp
 index 811f443ab..6ffdd0a6e 100644
 --- a/soh/soh/frame_interpolation.cpp
