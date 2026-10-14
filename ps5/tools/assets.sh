@@ -45,6 +45,8 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
             z.writestr(info, open(path, "rb").read())
 PY
 printf '==> %s (%s bytes)\n' "$app/assets.zip" "$(stat -c %s "$app/assets.zip")"
+# PlayStation button prompts (Kenney CC0 glyphs, no game data)
+python3 "$ps5/tools/make-prompts.py" "$app/ps5_prompts.o2r"
 printf '==> %s (%s bytes)\n' "$app/soh.o2r" "$(stat -c %s "$app/soh.o2r")"
 
 if [[ $# -ge 1 ]]; then

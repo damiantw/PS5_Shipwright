@@ -408,7 +408,7 @@ index e3a387749..497af0092 100644
      }
  
 diff --git a/soh/soh/OTRGlobals.cpp b/soh/soh/OTRGlobals.cpp
-index d336c3c5b..4b7d2bad9 100644
+index d336c3c5b..17f2fb0ac 100644
 --- a/soh/soh/OTRGlobals.cpp
 +++ b/soh/soh/OTRGlobals.cpp
 @@ -4,6 +4,8 @@
@@ -621,7 +621,24 @@ index d336c3c5b..4b7d2bad9 100644
              } else {
                  if (!ImGui::IsPopupOpen("ROM Extraction")) {
                      ImGui::OpenPopup("ROM Extraction");
-@@ -836,6 +962,11 @@ void OTRGlobals::Initialize() {
+@@ -818,6 +944,16 @@ void OTRGlobals::Initialize() {
+     if (std::filesystem::exists(ootPath)) {
+         context->GetResourceManager()->GetArchiveManager()->AddArchive(ootPath);
+     }
++#ifdef __PROSPERO__
++    // PlayStation button prompts (ps5/tools/make-prompts.py): added last so their glyphs
++    // win over the ROM's and a texture pack's; Settings > PS5 "PlayStation button prompts"
++    if (CVarGetInteger(CVAR_SETTING("PS5.Prompts"), 1)) {
++        std::string promptsPath = Ship::Context::LocateFileAcrossAppDirs("ps5_prompts.o2r", appShortName);
++        if (std::filesystem::exists(promptsPath)) {
++            context->GetResourceManager()->GetArchiveManager()->AddArchive(promptsPath);
++        }
++    }
++#endif
+ 
+     std::unordered_set<uint32_t> ValidHashes = {
+         OOT_PAL_MQ,     OOT_NTSC_JP_MQ, OOT_NTSC_US_MQ, OOT_PAL_GC_MQ_DBG, OOT_NTSC_US_10,
+@@ -836,6 +972,11 @@ void OTRGlobals::Initialize() {
          static_cast<spdlog::level::level_enum>(CVarGetInteger(CVAR_DEVELOPER_TOOLS("LogLevel"), defaultLogLevel));
      context->InitLogging(logLevel, logLevel);
      Ship::Context::GetRawInstance()->GetLogger()->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
@@ -633,7 +650,7 @@ index d336c3c5b..4b7d2bad9 100644
  
      InitGfxDebugger();
      context->InitFileDropMgr();
-@@ -1007,7 +1138,11 @@ void OTRGlobals::ScaleImGui() {
+@@ -1007,7 +1148,11 @@ void OTRGlobals::ScaleImGui() {
      float scale = imguiScaleOptionToValue[imGuiScaleIndex];
      float newScale = scale / previousImGuiScale;
      ImGui::GetStyle().ScaleAllSizes(newScale);
@@ -645,7 +662,7 @@ index d336c3c5b..4b7d2bad9 100644
      previousImGuiScale = scale;
      previousImGuiScaleIndex = imGuiScaleIndex;
  }
-@@ -1519,6 +1654,102 @@ static void SetAppImageHome() {
+@@ -1519,6 +1664,102 @@ static void SetAppImageHome() {
  }
  #endif
  
@@ -748,7 +765,7 @@ index d336c3c5b..4b7d2bad9 100644
  extern "C" void InitOTR(int argc, char* argv[]) {
  #ifdef __linux__
      SetAppImageHome();
-@@ -1527,6 +1758,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
+@@ -1527,6 +1768,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
      OTRGlobals::Instance->RunExtract(argc, argv);
  
      OTRGlobals::Instance->Initialize();
@@ -758,7 +775,85 @@ index d336c3c5b..4b7d2bad9 100644
      CustomMessageManager::Instance = new CustomMessageManager();
      ItemTableManager::Instance = new ItemTableManager();
      GameInteractor::Instance = new GameInteractor();
-@@ -1897,6 +2131,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
+@@ -1662,7 +1906,77 @@ extern "C" uint64_t GetUnixTimestamp() {
+     return (uint64_t)millis.count();
+ }
+ 
++#ifdef __PROSPERO__
++#include "ship/controller/controldevice/controller/mapping/sdl/SDLButtonToButtonMapping.h"
++// PlayStation 5, menu defaults version 4: the right stick is the camera (SoH's Free
++// Look, and aiming in first person) and the C buttons move to the D-pad, which the
++// game does not otherwise use. Applied once, at the first frame (the control deck and
++// its saved mappings are loaded by then); the mappings stay editable in the menu.
++static void Ps5ApplyCameraDefaults() {
++    if (CVarGetInteger(CVAR_SETTING("PS5.MenuDefaults"), 0) >= 4) {
++        return;
++    }
++    auto controller = Ship::Context::GetRawInstance()->GetControlDeck()->GetControllerByPort(0);
++    if (!controller->HasConfig()) {
++        controller->AddDefaultMappings(Ship::PhysicalDeviceType::Keyboard);
++        controller->AddDefaultMappings(Ship::PhysicalDeviceType::SDLGamepad);
++    }
++    const struct {
++        CONTROLLERBUTTONS_T c, d;
++        SDL_GameControllerButton pad;
++    } dirs[] = {
++        { BTN_CUP, BTN_DUP, SDL_CONTROLLER_BUTTON_DPAD_UP },
++        { BTN_CDOWN, BTN_DDOWN, SDL_CONTROLLER_BUTTON_DPAD_DOWN },
++        { BTN_CLEFT, BTN_DLEFT, SDL_CONTROLLER_BUTTON_DPAD_LEFT },
++        { BTN_CRIGHT, BTN_DRIGHT, SDL_CONTROLLER_BUTTON_DPAD_RIGHT },
++    };
++    for (const auto& dir : dirs) {
++        auto cButton = controller->GetButton(dir.c);
++        std::vector<std::string> stale;
++        for (const auto& [id, mapping] : cButton->GetAllButtonMappings()) {
++            // the right stick's axes (SDL 2 = right X, 3 = right Y); keyboard and others stay
++            if (id.find("-SDLA2-AD") != std::string::npos || id.find("-SDLA3-AD") != std::string::npos) {
++                stale.push_back(id);
++            }
++        }
++        for (const auto& id : stale) {
++            cButton->ClearButtonMapping(id);
++        }
++        auto dpadMapping = std::make_shared<Ship::SDLButtonToButtonMapping>(0, dir.c, dir.pad);
++        cButton->AddButtonMapping(dpadMapping);
++        dpadMapping->SaveToConfig();
++        cButton->SaveButtonMappingIdsToConfig();
++        // the D-pad no longer also presses the N64 D-pad (no double input)
++        auto dButton = controller->GetButton(dir.d);
++        const std::string dId = Ship::SDLButtonToButtonMapping(0, dir.d, dir.pad).GetButtonMappingId();
++        if (dButton->GetAllButtonMappings().count(dId)) {
++            dButton->ClearButtonMapping(dId);
++        }
++    }
++    auto stick = controller->GetRightStick();
++    stick->ClearAllMappingsForDeviceType(Ship::PhysicalDeviceType::SDLGamepad);
++    stick->AddDefaultMappings(Ship::PhysicalDeviceType::SDLGamepad);
++    CVarSetInteger(CVAR_SETTING("FreeLook.Enabled"), 1);
++    CVarSetInteger(CVAR_SETTING("Controls.RightStickAim"), 1);
++    // a little quicker than the 100 % default: a full tilt turns the camera around in
++    // about a second at 60 fps
++    if (CVarGetFloat(CVAR_SETTING("FreeLook.CameraSensitivity.X"), 1.0f) == 1.0f) {
++        CVarSetFloat(CVAR_SETTING("FreeLook.CameraSensitivity.X"), 1.5f);
++    }
++    if (CVarGetFloat(CVAR_SETTING("FreeLook.CameraSensitivity.Y"), 1.0f) == 1.0f) {
++        CVarSetFloat(CVAR_SETTING("FreeLook.CameraSensitivity.Y"), 1.2f);
++    }
++    CVarSetInteger(CVAR_SETTING("PS5.MenuDefaults"), 4);
++    CVarSave();
++    ShipInit::Init(CVAR_SETTING("FreeLook.Enabled"));
++    SPDLOG_INFO("PS5 defaults v4: right stick = camera (Free Look), C buttons on the D-pad");
++}
++#endif
++
+ extern "C" void Graph_StartFrame() {
++#ifdef __PROSPERO__
++    Ps5ApplyCameraDefaults();
++#endif
+     auto gui = std::dynamic_pointer_cast<Fast::Fast3dGui>(Ship::Context::GetRawInstance()->GetWindow()->GetGui());
+ #ifndef __WIIU__
+     using Ship::KbScancode;
+@@ -1897,6 +2211,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
  std::map<std::string, SoundFontSample*> cachedCustomSFs;
  
  ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool isJapaneseFont) {
@@ -898,7 +993,7 @@ index 642bc54a3..1b7bab1aa 100644
              }
              // for (auto& entryName : sidebar->at(sectionIndex).sidebarOrder) {
 diff --git a/soh/soh/SohGui/SohMenuSettings.cpp b/soh/soh/SohGui/SohMenuSettings.cpp
-index 476f99f3f..6a9ad3ab2 100644
+index 476f99f3f..4b45960b4 100644
 --- a/soh/soh/SohGui/SohMenuSettings.cpp
 +++ b/soh/soh/SohGui/SohMenuSettings.cpp
 @@ -139,6 +139,7 @@ void SohMenu::AddMenuSettings() {
@@ -925,15 +1020,24 @@ index 476f99f3f..6a9ad3ab2 100644
      AddWidget(path, "Cursor Always Visible", WIDGET_CVAR_CHECKBOX)
          .CVar(CVAR_SETTING("CursorVisibility"))
          .RaceDisable(false)
-@@ -172,6 +175,7 @@ void SohMenu::AddMenuSettings() {
+@@ -172,6 +175,16 @@ void SohMenu::AddMenuSettings() {
                  CVarGetInteger(CVAR_SETTING("CursorVisibility"), 0));
          })
          .Options(CheckboxOptions().Tooltip("Makes the cursor always visible, even in full screen."));
 +#endif
++#endif
++#ifdef __PROSPERO__
++    AddWidget(path, "PlayStation Button Prompts", WIDGET_CVAR_CHECKBOX)
++        .CVar(CVAR_SETTING("PS5.Prompts"))
++        .RaceDisable(false)
++        .Options(CheckboxOptions()
++                     .DefaultValue(true)
++                     .Tooltip("Shows Cross, Circle, L1/L2/R2 and the D-pad in place of the N64 buttons in "
++                              "text, the pause menu and the HUD. Takes effect the next time the game starts."));
  #endif
      AddWidget(path, "Search In Sidebar", WIDGET_CVAR_CHECKBOX)
          .CVar(CVAR_SETTING("Menu.SidebarSearch"))
-@@ -193,6 +197,7 @@ void SohMenu::AddMenuSettings() {
+@@ -193,6 +206,7 @@ void SohMenu::AddMenuSettings() {
      AddWidget(path, "Reset Button Combination:", WIDGET_CVAR_BTN_SELECTOR)
          .CVar("gSettings.ResetBtn")
          .Options(BtnSelectorOptions().DefaultValue(BTN_CUSTOM_MODIFIER2));
@@ -941,7 +1045,7 @@ index 476f99f3f..6a9ad3ab2 100644
      AddWidget(path, "Open App Files Folder", WIDGET_BUTTON)
          .RaceDisable(false)
          .Callback([](WidgetInfo& info) {
-@@ -200,6 +205,7 @@ void SohMenu::AddMenuSettings() {
+@@ -200,6 +214,7 @@ void SohMenu::AddMenuSettings() {
              SDL_OpenURL(std::string("file:///" + std::filesystem::absolute(filesPath).string()).c_str());
          })
          .Options(ButtonOptions().Tooltip("Opens the folder that contains the save and mods folders, etc."));
@@ -949,7 +1053,7 @@ index 476f99f3f..6a9ad3ab2 100644
  
      AddWidget(path, "Boot", WIDGET_SEPARATOR_TEXT);
      AddWidget(path, "Boot Sequence", WIDGET_CVAR_COMBOBOX)
-@@ -263,7 +269,11 @@ void SohMenu::AddMenuSettings() {
+@@ -263,7 +278,11 @@ void SohMenu::AddMenuSettings() {
          .Options(ComboboxOptions()
                       .ComboMap(imguiScaleOptions)
                       .Tooltip("Changes the scaling of the ImGui menu elements.")
@@ -961,7 +1065,7 @@ index 476f99f3f..6a9ad3ab2 100644
                       .ComponentAlignment(ComponentAlignments::Right)
                       .LabelPosition(LabelPositions::Far))
          .Callback([](WidgetInfo& info) { OTRGlobals::Instance->ScaleImGui(); });
-@@ -334,10 +344,12 @@ void SohMenu::AddMenuSettings() {
+@@ -334,10 +353,12 @@ void SohMenu::AddMenuSettings() {
      path.sidebarName = "Graphics";
      AddSidebarEntry("Settings", "Graphics", 3);
      AddWidget(path, "Graphics Options", WIDGET_SEPARATOR_TEXT);
@@ -974,7 +1078,7 @@ index 476f99f3f..6a9ad3ab2 100644
      AddWidget(path, "Internal Resolution", WIDGET_CVAR_SLIDER_FLOAT)
          .CVar(CVAR_INTERNAL_RESOLUTION)
          .RaceDisable(false)
-@@ -401,6 +413,7 @@ void SohMenu::AddMenuSettings() {
+@@ -401,6 +422,7 @@ void SohMenu::AddMenuSettings() {
          .CVar(CVAR_SETTING("MatchRefreshRate"))
          .RaceDisable(false)
          .Options(CheckboxOptions().Tooltip("Matches interpolation value to the refresh rate of your display."));
@@ -982,7 +1086,7 @@ index 476f99f3f..6a9ad3ab2 100644
      AddWidget(path, "Renderer API (Needs reload)", WIDGET_VIDEO_BACKEND).RaceDisable(false);
      AddWidget(path, "Enable Vsync", WIDGET_CVAR_CHECKBOX)
          .CVar(CVAR_VSYNC_ENABLED)
-@@ -409,6 +422,8 @@ void SohMenu::AddMenuSettings() {
+@@ -409,6 +431,8 @@ void SohMenu::AddMenuSettings() {
          .Options(CheckboxOptions()
                       .Tooltip("Removes tearing, but clamps your max FPS to your display's refresh rate.")
                       .DefaultValue(true));
@@ -991,7 +1095,7 @@ index 476f99f3f..6a9ad3ab2 100644
      AddWidget(path, "Windowed Fullscreen", WIDGET_CVAR_CHECKBOX)
          .CVar(CVAR_SDL_WINDOWED_FULLSCREEN)
          .RaceDisable(false)
-@@ -416,6 +431,8 @@ void SohMenu::AddMenuSettings() {
+@@ -416,6 +440,8 @@ void SohMenu::AddMenuSettings() {
              info.isHidden = mSohMenu->disabledMap.at(DISABLE_FOR_NO_WINDOWED_FULLSCREEN).active;
          })
          .Options(CheckboxOptions().Tooltip("Enables Windowed Fullscreen Mode."));
@@ -1000,7 +1104,7 @@ index 476f99f3f..6a9ad3ab2 100644
      AddWidget(path, "Allow multi-windows", WIDGET_CVAR_CHECKBOX)
          .CVar(CVAR_ENABLE_MULTI_VIEWPORTS)
          .RaceDisable(false)
-@@ -424,6 +441,7 @@ void SohMenu::AddMenuSettings() {
+@@ -424,6 +450,7 @@ void SohMenu::AddMenuSettings() {
          .Options(CheckboxOptions()
                       .Tooltip("Allows multiple windows to be opened at once. Requires a reload to take effect.")
                       .DefaultValue(true));

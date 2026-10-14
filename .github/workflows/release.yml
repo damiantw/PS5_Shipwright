@@ -33,7 +33,7 @@ jobs:
         run: |
           apt-get update -q
           DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
-            git ca-certificates curl wget make file unzip zip xz-utils python3 python3-pip python3-mako python3-yaml \
+            git ca-certificates curl wget make file unzip zip xz-utils python3 python3-pip python3-mako python3-yaml python3-pil \
             python3-packaging clang-19 lld-19 llvm-19 llvm-19-dev libclang-19-dev libclang-cpp19-dev \
             libclc-19-dev libllvmspirvlib-19-dev spirv-tools glslang-tools bison flex pkg-config \
             cmake ninja-build ffmpeg imagemagick zlib1g-dev libzstd-dev libzip-dev rsync patch libclang-rt-19-dev lsb-release clang-tools-19

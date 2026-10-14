@@ -46,3 +46,7 @@ app="${PS5_DIST_DIR:-$root/dist}/$title_id"
 if [[ -d $app/sce_sys ]]; then
     cp "$ps5/sce_sys/param.json" "$ps5/sce_sys/icon0.png" "$ps5/sce_sys/pic0.dds" "$ps5/sce_sys/pic1.dds" "$app/sce_sys/"
 fi
+# PlayStation button prompts (Kenney CC0 glyphs, no game data); assets.sh makes them too
+if [[ -d $app ]]; then
+    python3 "$ps5/tools/make-prompts.py" "$app/ps5_prompts.o2r"
+fi

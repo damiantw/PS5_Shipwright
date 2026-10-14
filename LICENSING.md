@@ -8,6 +8,8 @@ names its own in its header, and may also be used under that licence alone.
 | Path | Licence | Text |
 | --- | --- | --- |
 | `ps5/tools/png-to-title-dds.py` (encoder from PS5 RetroArch, by Mihawk) | GPL-3.0-or-later | [`licenses/GPL-3.0.txt`](licenses/GPL-3.0.txt) |
+| `ps5/tools/make-prompts.py` (approach after mshivam019/oot64-ps5's `make-playstation-prompts.py`) | GPL-3.0-or-later | [`licenses/GPL-3.0.txt`](licenses/GPL-3.0.txt) |
+| `ps5/art/prompts/` (Kenney Input Prompts 1.1, PlayStation glyphs, built into `ps5_prompts.o2r`) | CC0 | [`ps5/art/prompts/LICENSE.txt`](ps5/art/prompts/LICENSE.txt) |
 | `ps5/src/platform.c`, `ps5/src/platform.h` and the tools taken from the PS5 Vulkan Template (by Mihawk) | MIT | [`licenses/MIT.txt`](licenses/MIT.txt) |
 | The rest of `ps5/src/`, `ps5/tools/`, `ps5/cmake/` and `ps5/art/*.sh` (written for this port and the ports before it) | MIT | [`licenses/MIT.txt`](licenses/MIT.txt) |
 | `ps5/sdl/` (SDL2 drivers for the console) and `ps5/patches/sdl.patch` | Zlib, as SDL | [`licenses/Zlib.txt`](licenses/Zlib.txt) |

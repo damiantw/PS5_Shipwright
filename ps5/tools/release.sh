@@ -23,7 +23,7 @@ version=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["conte
 [[ ${1:-} == --no-build ]] || "$ps5/tools/build.sh"
 app="$root/dist/$title_id"
 for file in eboot.bin sce_sys/param.json sce_sys/icon0.png sce_sys/pic0.dds sce_sys/pic1.dds sce_module/libc.prx \
-        soh.o2r assets.zip; do
+        soh.o2r ps5_prompts.o2r assets.zip; do
     [[ -e $app/$file ]] || { echo "missing $app/$file: run ps5/tools/build.sh" >&2; exit 2; }
 done
 for file in param.json icon0.png pic0.dds pic1.dds; do
@@ -61,7 +61,7 @@ tops = {n.split("/")[0] for n in names}
 assert tops == {title}, f"top level is {sorted(tops)}, not {title}/"
 bad = [n for n in names if forbidden.search(n.rstrip("/"))]
 assert not bad, f"forbidden entries: {bad[:5]}"
-for need in ("eboot.bin", "sce_sys/param.json", "sce_sys/icon0.png", "soh.o2r", "assets.zip"):
+for need in ("eboot.bin", "sce_sys/param.json", "sce_sys/icon0.png", "soh.o2r", "ps5_prompts.o2r", "assets.zip"):
     assert f"{title}/{need}" in names, f"{need} missing"
 inner = zipfile.ZipFile(zipfile.ZipFile(out).open(f"{title}/assets.zip")).namelist()
 assert "config.yml" in inner, "assets.zip has no config.yml"
