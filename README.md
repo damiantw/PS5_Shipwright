@@ -29,7 +29,8 @@ game turns it into its data file on the console the first time you start it.
 
 1. Download `PPSA99320.zip` from the [Releases](https://github.com/damiantw/PS5_Shipwright/releases) page.
 2. Unzip it. It contains one folder, `PPSA99320`.
-3. Copy that folder to `/data/homebrew/PPSA99320` on the console, using whatever you like:
+3. Copy that folder to `/data/homebrew/PPSA99320` on the console (so `eboot.bin` ends up at
+   `/data/homebrew/PPSA99320/eboot.bin`), using whatever you like:
    a file manager on the console, a USB drive, or an FTP client if your homebrew setup runs
    an FTP server.
 4. Let ShadowMountPlus (or your tool) register it. "Ship of Harkinian" appears on the home screen.
@@ -134,7 +135,8 @@ Ship of Harkinian's mods work on the PS5 as on a PC.
   top to bottom: a mod higher in the list overrides the ones below it. Changes apply after a
   restart (close the game from the PS5 Switcher and start it again).
 - Texture packs that keep their files under `alt/` (most HD packs, for example OoT Reloaded)
-  also need **Enhancements > Graphics > Mods > Use Alternate Assets** turned on.
+  work straight away: **Enhancements > Graphics > Mods > Use Alternate Assets** is on by
+  default. If a pack's textures don't show, check that option.
 - Large HD packs take longer to load scenes, but play at 60 fps.
 
 ## Performance
