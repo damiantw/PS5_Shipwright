@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 8c8f227..1615e8c 100644
+index 8c8f22714..1615e8c61 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -409,7 +409,7 @@ FetchContent_Declare(
@@ -12,7 +12,7 @@ index 8c8f227..1615e8c 100644
      set(TORCH_ZLIB_TARGET ZLIB::ZLIB)
  else()
 diff --git a/src/Companion.cpp b/src/Companion.cpp
-index d73b616..f40676e 100644
+index d73b6165f..f40676ed4 100644
 --- a/src/Companion.cpp
 +++ b/src/Companion.cpp
 @@ -190,7 +190,12 @@ void Companion::Init(const ExportType type) {
