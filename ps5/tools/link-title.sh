@@ -165,12 +165,13 @@ cp "$work/link/llvm-pie.elf" "$root/build/last-title.elf"
 archive_revision=$(sed -n 's/^revision: //p' "$(dirname "$(dirname "$archive")")/PROVENANCE.txt" 2>/dev/null || true)
 printf '==> %s: %s (eboot.bin %s bytes; RADV %s)\n' "$title_id" "$app" \
     "$(stat -c %s "$app/eboot.bin")" "${archive_revision:0:11}"
-# name what makes the tree -dirty (CI showed -dirty on a clean checkout)
-git -C "$root" -c diff.ignoreSubmodules=all status --porcelain --untracked-files=no 2>/dev/null |
-    sed 's/^/link-title.sh: dirty: /' >&2 || true
-# Build ID for the shader warm-up stamp: this repo's commit (+dirty) and the eboot's sha256
+# Build ID for the shader warm-up stamp: this repo's commit (+dirty) and the eboot's sha256.
+# Dirty = a tracked file of this repo changed; the submodules are always modified here (the
+# patches are applied to them), and `git describe --dirty` counts them whatever the config says
+dirty=$(git -C "$root" status --porcelain --ignore-submodules=all --untracked-files=no 2>/dev/null || true)
+[ -z "$dirty" ] || printf '%s\n' "$dirty" | sed 's/^/link-title.sh: dirty: /' >&2
 {
-    git -C "$root" -c diff.ignoreSubmodules=all describe --always --dirty --abbrev=12 2>/dev/null || echo unknown
+    { rev=$(git -C "$root" rev-parse --short=12 HEAD 2>/dev/null) && echo "$rev${dirty:+-dirty}"; } || echo unknown
     sha256sum "$app/eboot.bin" | cut -d' ' -f1
 } | paste -sd' ' > "$app/build_id.txt"
 # The licences beside eboot.bin
