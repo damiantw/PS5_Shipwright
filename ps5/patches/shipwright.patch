@@ -408,7 +408,7 @@ index e3a387749..497af0092 100644
      }
  
 diff --git a/soh/soh/OTRGlobals.cpp b/soh/soh/OTRGlobals.cpp
-index d336c3c5b..31f74faa9 100644
+index d336c3c5b..4b7d2bad9 100644
 --- a/soh/soh/OTRGlobals.cpp
 +++ b/soh/soh/OTRGlobals.cpp
 @@ -4,6 +4,8 @@
@@ -484,13 +484,15 @@ index d336c3c5b..31f74faa9 100644
      ScaleImGui();
  }
  
-@@ -408,7 +454,22 @@ static bool RemoveArchiveAcrossAppDirs(const std::string& fileName) {
+@@ -408,7 +454,25 @@ static bool RemoveArchiveAcrossAppDirs(const std::string& fileName) {
      return !std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs(fileName, appShortName));
  }
  
 +#ifdef __PROSPERO__
 +// PlayStation 5: ROMs found in /data/soh/ that could not be used, with the reason, for the screen
 +static std::string gPS5RejectedRoms;
++// the log level to restore after a ROM conversion (Torch changes spdlog's global level and pattern)
++static spdlog::level::level_enum gPS5LogLevel = spdlog::level::info;
 +#endif
 +
  void OTRGlobals::RunExtract(int argc, char* argv[]) {
@@ -502,12 +504,13 @@ index d336c3c5b..31f74faa9 100644
 +            CVarGetInteger(CVAR_DEVELOPER_TOOLS("LogLevel"), spdlog::level::info));
 +        context->InitLogging(level, level);
 +        Ship::Context::GetRawInstance()->GetLogger()->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
++        gPS5LogLevel = level;
 +    }
 +#endif
      bool extractDone = false;
      ExtractSteps extractStep = ES_PORT_ARCHIVE;
      WindowsSteps windowsStep = WS_TEMP;
-@@ -587,6 +648,17 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -587,6 +651,17 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
              case ES_EXTRACT_ARGS: {
  #if !defined(__SWITCH__) && !defined(__WIIU__)
                  if (args.empty()) {
@@ -525,14 +528,14 @@ index d336c3c5b..31f74faa9 100644
                      SohGui::RegisterPopup(
                          "Run Ship of Harkinian", "All files have been processed. Run SoH?", "Yes", "No",
                          [&]() {
-@@ -609,6 +681,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -609,6 +684,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                  if (extract.RunFileStandalone(file)) {
                      bool doExtract = true;
                      std::string archive = (extract.IsMasterQuest() ? "oot-mq.o2r" : "oot.o2r");
 +#ifdef __PROSPERO__
 +                    if (std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) + "/" + archive)) {
 +                        // a second ROM of a version already converted (or converted a moment ago)
-+                        SPDLOG_INFO("PS5: ROM skipped: {} ({} already exists)", file, archive);
++                        SPDLOG_WARN("PS5: ROM skipped: {} ({} already exists)", file, archive);
 +                        break;
 +                    }
 +                    SPDLOG_INFO("PS5: converting {} to {}", file, archive);
@@ -540,7 +543,7 @@ index d336c3c5b..31f74faa9 100644
                      if (std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) + "/" + archive)) {
                          std::string msg = "Archive for current ROM, " + archive + ", already exists.\nExtract again?";
                          SohGui::RegisterPopup("Confirm Re-extract", msg.c_str(), "Yes", "No", [&]() {
-@@ -626,6 +706,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -626,6 +709,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                          });
                      }
                  } else {
@@ -555,7 +558,7 @@ index d336c3c5b..31f74faa9 100644
                      bool open = true;
                      std::string msg = "File\n" + std::string(file) + "\nis not a ROM or does not match supported ROMs.";
                      SohGui::RegisterPopup("SoH ROM Error", msg.c_str());
-@@ -644,6 +732,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -644,6 +735,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                              std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs("oot.o2r", appShortName));
  
                          if (!ootO2RExists) {
@@ -567,7 +570,7 @@ index d336c3c5b..31f74faa9 100644
                              SohGui::RegisterPopup(
                                  "No O2R Files", "No O2R files found. Generate one now?", "Yes", "No",
                                  [&]() { promptStep = PS_LOCAL; }, [&]() { exit(0); });
-@@ -661,6 +754,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -661,6 +757,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                              extract.GetRoms(args);
                          }
                          if (!args.empty()) {
@@ -581,7 +584,7 @@ index d336c3c5b..31f74faa9 100644
                              promptStep = PS_WAIT;
                              SohGui::RegisterPopup(
                                  "ROMs found", "ROMs found in application directory. Would you like to process them?",
-@@ -672,6 +772,24 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -672,6 +775,24 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                          continue;
                      }
                      case PS_FIRST: {
@@ -606,7 +609,31 @@ index d336c3c5b..31f74faa9 100644
                          if (!extract.ManuallySearchForRomMatchingType(RomSearchMode::Both)) {
                              promptStep = PS_FILE_CHECK;
                              continue;
-@@ -1007,7 +1125,11 @@ void OTRGlobals::ScaleImGui() {
+@@ -755,6 +876,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                     SohGui::RegisterPopup("Extraction Crashed", e.what(), "Close", "", []() { exit(1); });
+                 }
+                 extractionTask.reset();
++#ifdef __PROSPERO__
++                Ship::Context::GetRawInstance()->GetLogger()->set_level(gPS5LogLevel);
++                Ship::Context::GetRawInstance()->GetLogger()->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
++                SPDLOG_INFO("PS5: conversion finished");
++#endif
+             } else {
+                 if (!ImGui::IsPopupOpen("ROM Extraction")) {
+                     ImGui::OpenPopup("ROM Extraction");
+@@ -836,6 +962,11 @@ void OTRGlobals::Initialize() {
+         static_cast<spdlog::level::level_enum>(CVarGetInteger(CVAR_DEVELOPER_TOOLS("LogLevel"), defaultLogLevel));
+     context->InitLogging(logLevel, logLevel);
+     Ship::Context::GetRawInstance()->GetLogger()->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
++#ifdef __PROSPERO__
++    // PlayStation 5: the logger exists since RunExtract; a ROM conversion (Torch) sets spdlog's
++    // global level to warn, so put the configured level back or the session logs only warnings
++    Ship::Context::GetRawInstance()->GetLogger()->set_level(logLevel);
++#endif
+ 
+     InitGfxDebugger();
+     context->InitFileDropMgr();
+@@ -1007,7 +1138,11 @@ void OTRGlobals::ScaleImGui() {
      float scale = imguiScaleOptionToValue[imGuiScaleIndex];
      float newScale = scale / previousImGuiScale;
      ImGui::GetStyle().ScaleAllSizes(newScale);
@@ -618,7 +645,7 @@ index d336c3c5b..31f74faa9 100644
      previousImGuiScale = scale;
      previousImGuiScaleIndex = imGuiScaleIndex;
  }
-@@ -1519,6 +1641,102 @@ static void SetAppImageHome() {
+@@ -1519,6 +1654,102 @@ static void SetAppImageHome() {
  }
  #endif
  
@@ -721,7 +748,7 @@ index d336c3c5b..31f74faa9 100644
  extern "C" void InitOTR(int argc, char* argv[]) {
  #ifdef __linux__
      SetAppImageHome();
-@@ -1527,6 +1745,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
+@@ -1527,6 +1758,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
      OTRGlobals::Instance->RunExtract(argc, argv);
  
      OTRGlobals::Instance->Initialize();
@@ -731,7 +758,7 @@ index d336c3c5b..31f74faa9 100644
      CustomMessageManager::Instance = new CustomMessageManager();
      ItemTableManager::Instance = new ItemTableManager();
      GameInteractor::Instance = new GameInteractor();
-@@ -1897,6 +2118,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
+@@ -1897,6 +2131,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
  std::map<std::string, SoundFontSample*> cachedCustomSFs;
  
  ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool isJapaneseFont) {
