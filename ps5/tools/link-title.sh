@@ -165,6 +165,9 @@ cp "$work/link/llvm-pie.elf" "$root/build/last-title.elf"
 archive_revision=$(sed -n 's/^revision: //p' "$(dirname "$(dirname "$archive")")/PROVENANCE.txt" 2>/dev/null || true)
 printf '==> %s: %s (eboot.bin %s bytes; RADV %s)\n' "$title_id" "$app" \
     "$(stat -c %s "$app/eboot.bin")" "${archive_revision:0:11}"
+# name what makes the tree -dirty (CI showed -dirty on a clean checkout)
+git -C "$root" -c diff.ignoreSubmodules=all status --porcelain --untracked-files=no 2>/dev/null |
+    sed 's/^/link-title.sh: dirty: /' >&2 || true
 # Build ID for the shader warm-up stamp: this repo's commit (+dirty) and the eboot's sha256
 {
     git -C "$root" -c diff.ignoreSubmodules=all describe --always --dirty --abbrev=12 2>/dev/null || echo unknown

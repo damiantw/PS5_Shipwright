@@ -6335,7 +6335,7 @@ index 00000000..d5564a0f
 +}
 +#endif
 diff --git a/src/fast/interpreter.cpp b/src/fast/interpreter.cpp
-index 17b85369..3ed406d0 100644
+index 730b6f25..0dbb999f 100644
 --- a/src/fast/interpreter.cpp
 +++ b/src/fast/interpreter.cpp
 @@ -117,6 +117,8 @@ Interpreter::Interpreter() {
@@ -8279,7 +8279,7 @@ index 17b85369..3ed406d0 100644
  
      // The coordinates for texture rectangle shall bypass the viewport setting
      struct XYWidthHeight default_viewport;
-@@ -3719,6 +4457,14 @@ bool gfx_dl_handler_common(F3DGfx** cmd0) {
+@@ -3720,6 +4458,14 @@ bool gfx_dl_handler_common(F3DGfx** cmd0) {
      Interpreter* gfx = mInstance.lock().get();
      F3DGfx* cmd = *cmd0;
      F3DGfx* subGFX = (F3DGfx*)gfx->SegAddr(cmd->words.w1);
@@ -8294,7 +8294,7 @@ index 17b85369..3ed406d0 100644
      if (C0(16, 1) == 0) {
          // Push return address
          if (subGFX != nullptr) {
-@@ -4131,6 +4877,80 @@ bool gfx_set_timg_otr_filepath_handler_custom(F3DGfx** cmd0) {
+@@ -4132,6 +4878,80 @@ bool gfx_set_timg_otr_filepath_handler_custom(F3DGfx** cmd0) {
      return false;
  }
  
@@ -8375,7 +8375,7 @@ index 17b85369..3ed406d0 100644
  bool gfx_set_fb_handler_custom(F3DGfx** cmd0) {
      F3DGfx* cmd = *cmd0;
      Interpreter* gfx = mInstance.lock().get();
-@@ -4182,6 +5002,7 @@ bool gfx_read_fb_handler_custom(F3DGfx** cmd0) {
+@@ -4183,6 +5003,7 @@ bool gfx_read_fb_handler_custom(F3DGfx** cmd0) {
      uint16_t* rgba16Buffer = (uint16_t*)cmd->words.w1;
      int fbId = C0(0, 8);
      bool bswap = C0(8, 1);
@@ -8383,7 +8383,7 @@ index 17b85369..3ed406d0 100644
      ++(*cmd0);
      cmd = *cmd0;
      // Specifying the upper left origin value is unused and unsupported at the renderer level
-@@ -4202,6 +5023,16 @@ bool gfx_read_fb_handler_custom(F3DGfx** cmd0) {
+@@ -4203,6 +5024,16 @@ bool gfx_read_fb_handler_custom(F3DGfx** cmd0) {
      }
  #endif
  
@@ -8400,7 +8400,7 @@ index 17b85369..3ed406d0 100644
      return false;
  }
  
-@@ -4399,6 +5230,10 @@ bool gfx_set_key_r_handler_rdp(F3DGfx** cmd0) {
+@@ -4400,6 +5231,10 @@ bool gfx_set_key_r_handler_rdp(F3DGfx** cmd0) {
      Interpreter* gfx = mInstance.lock().get();
      F3DGfx* cmd = *cmd0;
  
@@ -8411,7 +8411,7 @@ index 17b85369..3ed406d0 100644
      gfx->mRdp->key_center.r = C1(8, 8);
      gfx->mRdp->key_scale.r = C1(0, 8);
      return false;
-@@ -4409,6 +5244,11 @@ bool gfx_set_key_gb_handler_rdp(F3DGfx** cmd0) {
+@@ -4410,6 +5245,11 @@ bool gfx_set_key_gb_handler_rdp(F3DGfx** cmd0) {
      Interpreter* gfx = mInstance.lock().get();
      F3DGfx* cmd = *cmd0;
  
@@ -8423,7 +8423,7 @@ index 17b85369..3ed406d0 100644
      gfx->mRdp->key_center.g = C1(24, 8);
      gfx->mRdp->key_scale.g = C1(16, 8);
      gfx->mRdp->key_center.b = C1(8, 8);
-@@ -4422,6 +5262,10 @@ bool gfx_set_convert_handler_rdp(F3DGfx** cmd0) {
+@@ -4423,6 +5263,10 @@ bool gfx_set_convert_handler_rdp(F3DGfx** cmd0) {
      Interpreter* gfx = mInstance.lock().get();
      F3DGfx* cmd = *cmd0;
  
@@ -8434,7 +8434,7 @@ index 17b85369..3ed406d0 100644
      gfx->mRdp->convert_k[0] = sign_extend_9(C0(13, 9));
      gfx->mRdp->convert_k[1] = sign_extend_9(C0(4, 9));
      // k2 is split across w0 and w1
-@@ -4731,12 +5575,15 @@ static constexpr UcodeHandler otrHandlers = {
+@@ -4732,12 +5576,15 @@ static constexpr UcodeHandler otrHandlers = {
      { OTR_G_REGBLENDEDTEX,
        { "G_REGBLENDEDTEX", gfx_register_blended_texture_handler_custom } },         // G_REGBLENDEDTEX (0x3f)
      { OTR_G_SETINTENSITY, { "G_SETINTENSITY", gfx_set_intensity_handler_custom } }, // G_SETINTENSITY (0x40)
@@ -8450,7 +8450,7 @@ index 17b85369..3ed406d0 100644
  };
  
  static constexpr UcodeHandler f3dex2Handlers = {
-@@ -4944,6 +5791,7 @@ void Interpreter::SpReset() {
+@@ -4945,6 +5792,7 @@ void Interpreter::SpReset() {
      mRsp->modelview_matrix_stack_size = 1;
      mRsp->current_num_lights = 2;
      mRsp->lights_changed = true;
@@ -8458,7 +8458,7 @@ index 17b85369..3ed406d0 100644
      // Transposed from the SDK basis on purpose: lookat[0] is LOOKATX and drives S.
      // Only games that never send a lookat see these, and MK64 matches output with them.
      // TODO: Use ucode DMEM defaults from hardware.
-@@ -5143,13 +5991,15 @@ void Interpreter::RunGuiOnly() {
+@@ -5144,13 +5992,15 @@ void Interpreter::RunGuiOnly() {
      }
  }
  
@@ -8475,7 +8475,7 @@ index 17b85369..3ed406d0 100644
  
      mRapi->UpdateFramebufferParameters(0, mGfxCurrentWindowDimensions.width, mGfxCurrentWindowDimensions.height, 1,
                                         false, true, true, !mRendersToFb);
-@@ -5328,7 +6178,8 @@ uint16_t Interpreter::GetPixelDepth(float x, float y) {
+@@ -5329,7 +6179,8 @@ uint16_t Interpreter::GetPixelDepth(float x, float y) {
      mGetPixelDepthCached.merge(res);
      mGetPixelDepthPending.clear();
  
@@ -8485,7 +8485,7 @@ index 17b85369..3ed406d0 100644
  }
  
  void gfx_push_current_dir(char* path) {
-@@ -5425,6 +6276,12 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
+@@ -5426,6 +6277,12 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
      cc_features->opt_invisible = (shader_id1 & SHADER_OPT(INVISIBLE)) != 0;
      cc_features->opt_grayscale = (shader_id1 & SHADER_OPT(GRAYSCALE)) != 0;
      cc_features->opt_prim_depth = (shader_id1 & SHADER_OPT(PRIM_DEPTH)) != 0;
@@ -8498,7 +8498,7 @@ index 17b85369..3ed406d0 100644
  
      cc_features->clamp[0][0] = shader_id1 & SHADER_OPT(TEXEL0_CLAMP_S);
      cc_features->clamp[0][1] = shader_id1 & SHADER_OPT(TEXEL0_CLAMP_T);
-@@ -5438,15 +6295,21 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
+@@ -5439,15 +6296,21 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
      cc_features->used_blend[0] = false;
      cc_features->used_blend[1] = false;
      cc_features->numInputs = 0;
@@ -8521,7 +8521,7 @@ index 17b85369..3ed406d0 100644
                  if (cc_features->c[c][i][j] == SHADER_TEXEL0 || cc_features->c[c][i][j] == SHADER_TEXEL0A) {
                      cc_features->usedTextures[0] = true;
                      if (cc_features->opt_2cyc) {
-@@ -5459,10 +6322,20 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
+@@ -5460,10 +6323,20 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
                          cc_features->usedTextures[0] = true;
                      }
                  }
@@ -8542,7 +8542,7 @@ index 17b85369..3ed406d0 100644
      for (int c = 0; c < 2; c++) {
          cc_features->do_single[c][0] = cc_features->c[c][0][2] == SHADER_0;
          cc_features->do_single[c][1] = cc_features->c[c][1][2] == SHADER_0;
-@@ -5487,6 +6360,9 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
+@@ -5488,6 +6361,9 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
          cc_features->used_blend[1] = true;
      }
  
@@ -8552,7 +8552,7 @@ index 17b85369..3ed406d0 100644
      cc_features->shader_id = Fast::ShaderIdUnmask(shader_id1);
  }
  
-@@ -5502,8 +6378,10 @@ extern "C" void gfx_texture_cache_clear() {
+@@ -5503,8 +6379,10 @@ extern "C" void gfx_texture_cache_clear() {
  
  extern "C" void gfx_shader_cache_clear() {
      auto instance = Fast::mInstance.lock().get();
@@ -8563,7 +8563,7 @@ index 17b85369..3ed406d0 100644
      instance->mRenderingState.mShaderProgram = nullptr;
      instance->mRapi->ClearShaderCache();
  }
-@@ -5514,4 +6392,4 @@ extern "C" void gfx_register_fb_texture(const void* cpuAddr, int fbId) {
+@@ -5515,4 +6393,4 @@ extern "C" void gfx_register_fb_texture(const void* cpuAddr, int fbId) {
  
  extern "C" void gfx_unregister_fb_texture(const void* cpuAddr) {
      Fast::mInstance.lock().get()->UnregisterFbTexture(cpuAddr);
