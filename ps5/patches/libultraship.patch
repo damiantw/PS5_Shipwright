@@ -1,5 +1,5 @@
 diff --git a/.github/workflows/build-validation.yml b/.github/workflows/build-validation.yml
-index 362710505..116a26c81 100644
+index 36271050..116a26c8 100644
 --- a/.github/workflows/build-validation.yml
 +++ b/.github/workflows/build-validation.yml
 @@ -20,8 +20,6 @@ jobs:
@@ -73,7 +73,7 @@ index 362710505..116a26c81 100644
        - name: Upload build
          uses: actions/upload-artifact@v4
 diff --git a/.github/workflows/test-validation.yml b/.github/workflows/test-validation.yml
-index 2330be7f0..b5d2a365e 100644
+index 2330be7f..b5d2a365 100644
 --- a/.github/workflows/test-validation.yml
 +++ b/.github/workflows/test-validation.yml
 @@ -41,8 +41,6 @@ jobs:
@@ -103,7 +103,7 @@ index 2330be7f0..b5d2a365e 100644
        run: cmake --build build-test --config Debug --parallel 10
      - name: Run tests
 diff --git a/.github/workflows/tidy-format-validation.yml b/.github/workflows/tidy-format-validation.yml
-index a607d34c4..bd934b23a 100644
+index a607d34c..bd934b23 100644
 --- a/.github/workflows/tidy-format-validation.yml
 +++ b/.github/workflows/tidy-format-validation.yml
 @@ -42,8 +42,6 @@ jobs:
@@ -117,7 +117,7 @@ index a607d34c4..bd934b23a 100644
            cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DENABLE_SCRIPTING=ON
 diff --git a/cmake/SetupTccRuntime.cmake b/cmake/SetupTccRuntime.cmake
 new file mode 100644
-index 000000000..40e430381
+index 00000000..40e43038
 --- /dev/null
 +++ b/cmake/SetupTccRuntime.cmake
 @@ -0,0 +1,161 @@
@@ -283,7 +283,7 @@ index 000000000..40e430381
 +    endif()
 +endfunction()
 diff --git a/cmake/dependencies/common.cmake b/cmake/dependencies/common.cmake
-index 7e5c4b6a9..60c7841ce 100644
+index 7e5c4b6a..60c7841c 100644
 --- a/cmake/dependencies/common.cmake
 +++ b/cmake/dependencies/common.cmake
 @@ -29,11 +29,63 @@ target_sources(ImGui
@@ -558,7 +558,7 @@ index 7e5c4b6a9..60c7841ce 100644
      if(APPLE)
          set_target_properties(libtcc libtcc1 PROPERTIES
 diff --git a/include/fast/Fast3dGui.h b/include/fast/Fast3dGui.h
-index 80d02317a..ef49cd553 100644
+index 80d02317..ef49cd55 100644
 --- a/include/fast/Fast3dGui.h
 +++ b/include/fast/Fast3dGui.h
 @@ -39,6 +39,9 @@ typedef struct {
@@ -572,7 +572,7 @@ index 80d02317a..ef49cd553 100644
              uint32_t Width;  ///< Framebuffer width in pixels.
              uint32_t Height; ///< Framebuffer height in pixels.
 diff --git a/include/fast/Fast3dWindow.h b/include/fast/Fast3dWindow.h
-index 7c16ca1f0..780e9c349 100644
+index 7c16ca1f..780e9c34 100644
 --- a/include/fast/Fast3dWindow.h
 +++ b/include/fast/Fast3dWindow.h
 @@ -23,6 +23,7 @@ enum WindowBackend {
@@ -594,7 +594,7 @@ index 7c16ca1f0..780e9c349 100644
      std::weak_ptr<Interpreter> GetInterpreterWeak() const;
  
 diff --git a/include/fast/backends/gfx_direct3d_common.h b/include/fast/backends/gfx_direct3d_common.h
-index d5215c2a1..3d575425f 100644
+index d5215c2a..3d575425 100644
 --- a/include/fast/backends/gfx_direct3d_common.h
 +++ b/include/fast/backends/gfx_direct3d_common.h
 @@ -25,11 +25,21 @@ struct PerDrawCB {
@@ -671,7 +671,7 @@ index d5215c2a1..3d575425f 100644
      // Previous states (to prevent setting states needlessly)
  
 diff --git a/include/fast/backends/gfx_metal.h b/include/fast/backends/gfx_metal.h
-index 1d4521025..f9ea7009d 100644
+index 1d452102..f9ea7009 100644
 --- a/include/fast/backends/gfx_metal.h
 +++ b/include/fast/backends/gfx_metal.h
 @@ -48,7 +48,7 @@ static size_t cantor(uint64_t a, uint64_t b) {
@@ -758,7 +758,7 @@ index 1d4521025..f9ea7009d 100644
      bool mNonUniformThreadgroupSupported;
  };
 diff --git a/include/fast/backends/gfx_opengl.h b/include/fast/backends/gfx_opengl.h
-index af24c702f..85e326c16 100644
+index af24c702..85e326c1 100644
 --- a/include/fast/backends/gfx_opengl.h
 +++ b/include/fast/backends/gfx_opengl.h
 @@ -39,6 +39,26 @@ struct ShaderProgram {
@@ -829,7 +829,7 @@ index af24c702f..85e326c16 100644
  
  } // namespace Fast
 diff --git a/include/fast/backends/gfx_rendering_api.h b/include/fast/backends/gfx_rendering_api.h
-index 3eb099619..dee9af43d 100644
+index 3eb09961..dee9af43 100644
 --- a/include/fast/backends/gfx_rendering_api.h
 +++ b/include/fast/backends/gfx_rendering_api.h
 @@ -1,6 +1,7 @@
@@ -987,7 +987,7 @@ index 3eb099619..dee9af43d 100644
  } // namespace Fast
 diff --git a/include/fast/backends/gfx_vulkan.h b/include/fast/backends/gfx_vulkan.h
 new file mode 100644
-index 000000000..caf0b1b3f
+index 00000000..caf0b1b3
 --- /dev/null
 +++ b/include/fast/backends/gfx_vulkan.h
 @@ -0,0 +1,361 @@
@@ -1353,7 +1353,7 @@ index 000000000..caf0b1b3f
 +
 +#endif
 diff --git a/include/fast/interpreter.h b/include/fast/interpreter.h
-index 4c6a705c3..fd88cdd83 100644
+index 4c6a705c..fd88cdd8 100644
 --- a/include/fast/interpreter.h
 +++ b/include/fast/interpreter.h
 @@ -58,7 +58,8 @@ enum {
@@ -1642,7 +1642,7 @@ index 4c6a705c3..fd88cdd83 100644
  int32_t gfx_check_image_signature(const char* imgData);
  const char* gfx_get_shader(int16_t id);
 diff --git a/include/fast/lus_gbi.h b/include/fast/lus_gbi.h
-index 77bdf8bed..1fb3f1128 100644
+index 77bdf8be..1fb3f112 100644
 --- a/include/fast/lus_gbi.h
 +++ b/include/fast/lus_gbi.h
 @@ -66,6 +66,7 @@ constexpr int8_t OTR_G_DL_INDEX = OPCODE(0x3d);
@@ -1664,7 +1664,7 @@ index 77bdf8bed..1fb3f1128 100644
  /*
   * The following commands are the "generated" RDP commands; the user
 diff --git a/include/libultraship/libultra/eeprom.h b/include/libultraship/libultra/eeprom.h
-index b64c87e5c..1580735e9 100644
+index b64c87e5..1580735e 100644
 --- a/include/libultraship/libultra/eeprom.h
 +++ b/include/libultraship/libultra/eeprom.h
 @@ -1,18 +1,11 @@
@@ -1691,7 +1691,7 @@ index b64c87e5c..1580735e9 100644
 +API_EXPORT int32_t osEepromLongRead(OSMesgQueue*, uint8_t, uint8_t*, int32_t);
 +API_EXPORT int32_t osEepromLongWrite(OSMesgQueue*, uint8_t, uint8_t*, int32_t);
 diff --git a/include/libultraship/libultra/gbi.h b/include/libultraship/libultra/gbi.h
-index 6beda75f2..8c5db2d9d 100644
+index 6beda75f..8c5db2d9 100644
 --- a/include/libultraship/libultra/gbi.h
 +++ b/include/libultraship/libultra/gbi.h
 @@ -191,12 +191,15 @@
@@ -1754,7 +1754,7 @@ index 6beda75f2..8c5db2d9d 100644
      {                                                                        \
          Gfx *_g0 = (Gfx*)(pkt), *_g1 = (Gfx*)(pkt), *_g2 = (Gfx*)(pkt);      \
 diff --git a/include/libultraship/libultra/gu.h b/include/libultraship/libultra/gu.h
-index 535140a92..9d4324afd 100644
+index 535140a9..9d4324af 100644
 --- a/include/libultraship/libultra/gu.h
 +++ b/include/libultraship/libultra/gu.h
 @@ -3,6 +3,7 @@
@@ -1932,7 +1932,7 @@ index 535140a92..9d4324afd 100644
                      int SourceImageOffsetT);
  
 diff --git a/include/libultraship/libultra/message.h b/include/libultraship/libultra/message.h
-index dca268f79..eea7d8c12 100644
+index dca268f7..eea7d8c1 100644
 --- a/include/libultraship/libultra/message.h
 +++ b/include/libultraship/libultra/message.h
 @@ -2,6 +2,7 @@
@@ -1966,7 +1966,7 @@ index dca268f79..eea7d8c12 100644
 +
  #endif
 diff --git a/include/libultraship/libultra/motor.h b/include/libultraship/libultra/motor.h
-index c6274fad9..6d0571fb2 100644
+index c6274fad..6d0571fb 100644
 --- a/include/libultraship/libultra/motor.h
 +++ b/include/libultraship/libultra/motor.h
 @@ -2,6 +2,7 @@
@@ -1995,7 +1995,7 @@ index c6274fad9..6d0571fb2 100644
 -#endif
  #endif
 diff --git a/include/libultraship/libultra/os.h b/include/libultraship/libultra/os.h
-index bd11553a4..0573e4c2c 100644
+index bd11553a..0573e4c2 100644
 --- a/include/libultraship/libultra/os.h
 +++ b/include/libultraship/libultra/os.h
 @@ -9,6 +9,7 @@
@@ -2102,7 +2102,7 @@ index bd11553a4..0573e4c2c 100644
  
  #endif
 diff --git a/include/ship/scripting/ScriptLoader.h b/include/ship/scripting/ScriptLoader.h
-index 0bbdc59be..f6ef4459e 100644
+index 0bbdc59b..f6ef4459 100644
 --- a/include/ship/scripting/ScriptLoader.h
 +++ b/include/ship/scripting/ScriptLoader.h
 @@ -9,6 +9,7 @@
@@ -2155,7 +2155,7 @@ index 0bbdc59be..f6ef4459e 100644
  
  } // namespace Ship
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 45989b662..4541aba36 100644
+index 45989b66..4541aba3 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
 @@ -7,8 +7,6 @@ set_property(TARGET libultraship PROPERTY CXX_STANDARD 20)
@@ -2262,7 +2262,7 @@ index 45989b662..4541aba36 100644
          $<$<NOT:$<CONFIG:Debug>>:NDEBUG>
          SPDLOG_ACTIVE_LEVEL=${SPDLOG_MIN_CUTOFF}
 diff --git a/src/fast/Fast3dGui.cpp b/src/fast/Fast3dGui.cpp
-index 237a502a0..c8604cef7 100644
+index 237a502a..c8604cef 100644
 --- a/src/fast/Fast3dGui.cpp
 +++ b/src/fast/Fast3dGui.cpp
 @@ -4,6 +4,9 @@
@@ -2387,7 +2387,7 @@ index 237a502a0..c8604cef7 100644
          case WindowBackend::FAST3D_DXGI_DX11:
              ImGui_ImplDX11_RenderDrawData(data);
 diff --git a/src/fast/Fast3dWindow.cpp b/src/fast/Fast3dWindow.cpp
-index 2b77a5f2e..fefe2f7c0 100644
+index 2b77a5f2..00cf039d 100644
 --- a/src/fast/Fast3dWindow.cpp
 +++ b/src/fast/Fast3dWindow.cpp
 @@ -9,6 +9,7 @@
@@ -2410,7 +2410,23 @@ index 2b77a5f2e..fefe2f7c0 100644
  #endif
      AddAvailableWindowBackend(WindowBackend::FAST3D_SDL_OPENGL);
  }
-@@ -154,6 +160,12 @@ void Fast3dWindow::InitWindowManager() {
+@@ -92,8 +98,15 @@ void Fast3dWindow::Init() {
+         height =
+             Ship::Context::GetRawInstance()->GetConfig()->GetInt("Window.Fullscreen.Height", gameMode ? 800 : 1080);
+     } else {
++#ifdef __PROSPERO__
++        // PlayStation 5: a new config starts at the TV's 16:9 (the 640x480 desktop default
++        // gives the game a 4:3 picture with side bars)
++        width = Ship::Context::GetRawInstance()->GetConfig()->GetInt("Window.Width", 3840);
++        height = Ship::Context::GetRawInstance()->GetConfig()->GetInt("Window.Height", 2160);
++#else
+         width = Ship::Context::GetRawInstance()->GetConfig()->GetInt("Window.Width", 640);
+         height = Ship::Context::GetRawInstance()->GetConfig()->GetInt("Window.Height", 480);
++#endif
+     }
+     Ship::Context::GetRawInstance()->GetWindow()->SetFullscreenScancode(
+         Ship::Context::GetRawInstance()->GetConfig()->GetInt("Shortcuts.Fullscreen", Ship::KbScancode::LUS_KB_F11));
+@@ -154,6 +167,12 @@ void Fast3dWindow::InitWindowManager() {
              mRenderingApi = new GfxRenderingAPIMetal();
              mWindowManagerApi = new GfxWindowBackendSDL2();
              break;
@@ -2423,7 +2439,7 @@ index 2b77a5f2e..fefe2f7c0 100644
  #endif
          default:
              SPDLOG_ERROR("Could not load the correct rendering backend");
-@@ -193,7 +205,8 @@ bool Fast3dWindow::IsFrameReady() {
+@@ -193,7 +212,8 @@ bool Fast3dWindow::IsFrameReady() {
      return mWindowManagerApi->IsFrameReady();
  }
  
@@ -2433,7 +2449,7 @@ index 2b77a5f2e..fefe2f7c0 100644
      std::shared_ptr<Window> wnd = Ship::Context::GetRawInstance()->GetWindow();
  
      // Skip dropped frames
-@@ -209,7 +222,7 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
+@@ -209,7 +229,7 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
      // Setup game framebuffers to match available window space
      mInterpreter->StartFrame();
      // Execute the games gfx commands
@@ -2442,7 +2458,7 @@ index 2b77a5f2e..fefe2f7c0 100644
      // Renders the game frame buffer to the final window and finishes the GUI
      gui->EndDraw();
      // Finalize swap buffers
-@@ -401,6 +414,8 @@ std::string Fast3dWindow::GetWindowBackendName() {
+@@ -401,6 +421,8 @@ std::string Fast3dWindow::GetWindowBackendName() {
              return "OpenGL";
          case WindowBackend::FAST3D_SDL_METAL:
              return "Metal";
@@ -2452,7 +2468,7 @@ index 2b77a5f2e..fefe2f7c0 100644
              return "";
      }
 diff --git a/src/fast/backends/gfx_direct3d11.cpp b/src/fast/backends/gfx_direct3d11.cpp
-index b986332d2..f202fe842 100644
+index b986332d..f202fe84 100644
 --- a/src/fast/backends/gfx_direct3d11.cpp
 +++ b/src/fast/backends/gfx_direct3d11.cpp
 @@ -299,6 +299,18 @@ void GfxRenderingAPIDX11::Init() {
@@ -2845,7 +2861,7 @@ index b986332d2..f202fe842 100644
          { "o_blend", M_ARRAY(cc_features.used_blend, bool, 2) },
          { "o_clamp", M_ARRAY(cc_features.clamp, bool, 2, 2) },
 diff --git a/src/fast/backends/gfx_dxgi.cpp b/src/fast/backends/gfx_dxgi.cpp
-index 09c04da37..fc644160f 100644
+index 09c04da3..fc644160 100644
 --- a/src/fast/backends/gfx_dxgi.cpp
 +++ b/src/fast/backends/gfx_dxgi.cpp
 @@ -16,6 +16,7 @@
@@ -2857,7 +2873,7 @@ index 09c04da37..fc644160f 100644
  #ifndef _LANGUAGE_C
  #define _LANGUAGE_C
 diff --git a/src/fast/backends/gfx_metal.cpp b/src/fast/backends/gfx_metal.cpp
-index 00eaedbc7..e5312d30a 100644
+index 00eaedbc..e5312d30 100644
 --- a/src/fast/backends/gfx_metal.cpp
 +++ b/src/fast/backends/gfx_metal.cpp
 @@ -268,8 +268,10 @@ struct ShaderProgram* GfxRenderingAPIMetal::CreateAndLoadNewShader(uint64_t shad
@@ -3093,7 +3109,7 @@ index 00eaedbc7..e5312d30a 100644
  
  void GfxRenderingAPIMetal::ReadFramebufferToCPU(int fb_id, uint32_t width, uint32_t height, uint16_t* rgba16_buf) {
 diff --git a/src/fast/backends/gfx_metal_shader.cpp b/src/fast/backends/gfx_metal_shader.cpp
-index bbcaafdae..484fa61f7 100644
+index bbcaafda..484fa61f 100644
 --- a/src/fast/backends/gfx_metal_shader.cpp
 +++ b/src/fast/backends/gfx_metal_shader.cpp
 @@ -36,13 +36,20 @@ static const char* p_shader_item_to_str(uint32_t item, bool with_alpha, bool onl
@@ -3185,7 +3201,7 @@ index bbcaafdae..484fa61f7 100644
          { "o_blend", M_ARRAY(cc_features.used_blend, bool, 2) },
          { "o_clamp", M_ARRAY(cc_features.clamp, bool, 2, 2) },
 diff --git a/src/fast/backends/gfx_opengl.cpp b/src/fast/backends/gfx_opengl.cpp
-index ad9b1ddea..3b2272b78 100644
+index ad9b1dde..3b2272b7 100644
 --- a/src/fast/backends/gfx_opengl.cpp
 +++ b/src/fast/backends/gfx_opengl.cpp
 @@ -63,6 +63,67 @@ void GfxRenderingAPIOGL::SetUniforms(ShaderProgram* prg) const {
@@ -3570,7 +3586,7 @@ index ad9b1ddea..3b2272b78 100644
              // fighting
              const int n64modeFactor = 120;
 diff --git a/src/fast/backends/gfx_sdl2.cpp b/src/fast/backends/gfx_sdl2.cpp
-index 15c5415f9..6f2942ff4 100644
+index 15c5415f..6f2942ff 100644
 --- a/src/fast/backends/gfx_sdl2.cpp
 +++ b/src/fast/backends/gfx_sdl2.cpp
 @@ -1,4 +1,4 @@
@@ -3649,7 +3665,7 @@ index 15c5415f9..6f2942ff4 100644
          if (mVsyncEnabled) {
 diff --git a/src/fast/backends/gfx_vulkan.cpp b/src/fast/backends/gfx_vulkan.cpp
 new file mode 100644
-index 000000000..d5564a0fa
+index 00000000..d5564a0f
 --- /dev/null
 +++ b/src/fast/backends/gfx_vulkan.cpp
 @@ -0,0 +1,2681 @@
@@ -6335,7 +6351,7 @@ index 000000000..d5564a0fa
 +}
 +#endif
 diff --git a/src/fast/interpreter.cpp b/src/fast/interpreter.cpp
-index 730b6f25a..0dbb999f7 100644
+index 730b6f25..0dbb999f 100644
 --- a/src/fast/interpreter.cpp
 +++ b/src/fast/interpreter.cpp
 @@ -117,6 +117,8 @@ Interpreter::Interpreter() {
@@ -8571,7 +8587,7 @@ index 730b6f25a..0dbb999f7 100644
 \ No newline at end of file
 +}
 diff --git a/src/fast/shaders/directx/default.shader.hlsl b/src/fast/shaders/directx/default.shader.hlsl
-index 3025a1121..7a4fa2691 100644
+index 3025a112..7a4fa269 100644
 --- a/src/fast/shaders/directx/default.shader.hlsl
 +++ b/src/fast/shaders/directx/default.shader.hlsl
 @@ -11,43 +11,50 @@
@@ -9036,7 +9052,7 @@ index 3025a1121..7a4fa2691 100644
  
      @if(o_alpha && o_noise)
 diff --git a/src/fast/shaders/metal/default.shader.metal b/src/fast/shaders/metal/default.shader.metal
-index bf876398e..792b279e4 100644
+index bf876398..792b279e 100644
 --- a/src/fast/shaders/metal/default.shader.metal
 +++ b/src/fast/shaders/metal/default.shader.metal
 @@ -10,10 +10,37 @@ struct FrameUniforms {
@@ -9470,7 +9486,7 @@ index bf876398e..792b279e4 100644
  
      @if(o_alpha && o_noise)
 diff --git a/src/fast/shaders/opengl/default.shader.glsl b/src/fast/shaders/opengl/default.shader.glsl
-index 1fe86aa88..b13925524 100644
+index 1fe86aa8..b1392552 100644
 --- a/src/fast/shaders/opengl/default.shader.glsl
 +++ b/src/fast/shaders/opengl/default.shader.glsl
 @@ -1,297 +1,498 @@
@@ -10272,7 +10288,7 @@ index 1fe86aa88..b13925524 100644
 +@end
 diff --git a/src/fast/shaders/vulkan/default.shader.glsl b/src/fast/shaders/vulkan/default.shader.glsl
 new file mode 100644
-index 000000000..40c62582b
+index 00000000..40c62582
 --- /dev/null
 +++ b/src/fast/shaders/vulkan/default.shader.glsl
 @@ -0,0 +1,471 @@
@@ -10749,14 +10765,14 @@ index 000000000..40c62582b
 +@end
 diff --git a/src/install_config.h b/src/install_config.h
 new file mode 100644
-index 000000000..709e28c53
+index 00000000..709e28c5
 --- /dev/null
 +++ b/src/install_config.h
 @@ -0,0 +1,2 @@
 +#define CMAKE_INSTALL_PREFIX "/usr/local"
 +/* #undef NON_PORTABLE */
 diff --git a/src/ship/Context.cpp b/src/ship/Context.cpp
-index 28a211f17..9f186b990 100644
+index 28a211f1..9f186b99 100644
 --- a/src/ship/Context.cpp
 +++ b/src/ship/Context.cpp
 @@ -29,6 +29,10 @@
@@ -10822,7 +10838,7 @@ index 28a211f17..9f186b990 100644
      return "./" + std::string(path);
  }
 diff --git a/src/ship/controller/controldevice/controller/mapping/sdl/SDLAxisDirectionToAnyMapping.cpp b/src/ship/controller/controldevice/controller/mapping/sdl/SDLAxisDirectionToAnyMapping.cpp
-index d2477204d..5c6c71da6 100644
+index d2477204..5c6c71da 100644
 --- a/src/ship/controller/controldevice/controller/mapping/sdl/SDLAxisDirectionToAnyMapping.cpp
 +++ b/src/ship/controller/controldevice/controller/mapping/sdl/SDLAxisDirectionToAnyMapping.cpp
 @@ -3,6 +3,12 @@
@@ -10852,7 +10868,7 @@ index d2477204d..5c6c71da6 100644
          default:
              break;
 diff --git a/src/ship/controller/controldevice/controller/mapping/sdl/SDLButtonToAnyMapping.cpp b/src/ship/controller/controldevice/controller/mapping/sdl/SDLButtonToAnyMapping.cpp
-index 907764eff..cb8e7e5a0 100644
+index 907764ef..cb8e7e5a 100644
 --- a/src/ship/controller/controldevice/controller/mapping/sdl/SDLButtonToAnyMapping.cpp
 +++ b/src/ship/controller/controldevice/controller/mapping/sdl/SDLButtonToAnyMapping.cpp
 @@ -13,6 +13,35 @@ SDLButtonToAnyMapping::~SDLButtonToAnyMapping() {
@@ -10892,7 +10908,7 @@ index 907764eff..cb8e7e5a0 100644
          case SDL_CONTROLLER_BUTTON_A:
              return "A";
 diff --git a/src/ship/scripting/ScriptLoader.cpp b/src/ship/scripting/ScriptLoader.cpp
-index 8235c8ad7..9eb404628 100644
+index 8235c8ad..9eb40462 100644
 --- a/src/ship/scripting/ScriptLoader.cpp
 +++ b/src/ship/scripting/ScriptLoader.cpp
 @@ -13,6 +13,8 @@
@@ -11049,7 +11065,7 @@ index 8235c8ad7..9eb404628 100644
  
      loader.Init(temp);
 diff --git a/src/ship/window/gui/Gui.cpp b/src/ship/window/gui/Gui.cpp
-index 1f9279bd7..eeddd51f6 100644
+index 1f9279bd..eeddd51f 100644
 --- a/src/ship/window/gui/Gui.cpp
 +++ b/src/ship/window/gui/Gui.cpp
 @@ -1,5 +1,14 @@
@@ -11222,7 +11238,7 @@ index 1f9279bd7..eeddd51f6 100644
      ImGuiRenderDrawData(ImGui::GetDrawData());
 diff --git a/tools/generate_keys_header.cpp b/tools/generate_keys_header.cpp
 new file mode 100644
-index 000000000..b8d3b1ba5
+index 00000000..b8d3b1ba
 --- /dev/null
 +++ b/tools/generate_keys_header.cpp
 @@ -0,0 +1,177 @@
