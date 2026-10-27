@@ -987,10 +987,10 @@ index 3eb09961..dee9af43 100644
  } // namespace Fast
 diff --git a/include/fast/backends/gfx_vulkan.h b/include/fast/backends/gfx_vulkan.h
 new file mode 100644
-index 00000000..caf0b1b3
+index 00000000..7423510e
 --- /dev/null
 +++ b/include/fast/backends/gfx_vulkan.h
-@@ -0,0 +1,361 @@
+@@ -0,0 +1,371 @@
 +//
 +//  gfx_vulkan.h
 +//  libultraship
@@ -1215,10 +1215,12 @@ index 00000000..caf0b1b3
 +        VkBuffer vertexBuffer = VK_NULL_HANDLE;
 +        VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 +        uint8_t* vertexMapped = nullptr;
++        size_t vertexCapacity = 0;
 +
 +        VkBuffer uniformBuffer = VK_NULL_HANDLE;
 +        VkDeviceMemory uniformMemory = VK_NULL_HANDLE;
 +        uint8_t* uniformMapped = nullptr;
++        size_t uniformCapacity = 0;
 +
 +        VkBuffer stagingBuffer = VK_NULL_HANDLE;
 +        VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
@@ -1259,6 +1261,11 @@ index 00000000..caf0b1b3
 +    void WriteDrawUniformsIfDirty();
 +    void SubmitFramebufferAndWait(int fbId);
 +    void CollectGarbage(FrameSlot& slot);
++    bool TryCreateHostBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& memory,
++                             uint8_t** mapped);
++    bool GrowVertexRing(FrameSlot& slot, size_t needed);
++    bool GrowUniformRing(FrameSlot& slot, size_t needed);
++    void WriteSet0(FrameSlot& slot);
 +    void DestroyTextureData(TextureDataVK& tex, bool deferred);
 +
 +    SDL_Window* mWindow = nullptr;
@@ -1290,6 +1297,9 @@ index 00000000..caf0b1b3
 +    size_t mUniformRingOffset = 0;
 +    size_t mUniformRingCapacity = 0;
 +    size_t mStagingOffset = 0;
++    size_t mFrameVertexBytes = 0; // vertex bytes recorded in the current frame
++    size_t mVertexRingPeak = 0;   // the most vertex bytes one frame has used
++    size_t mUniformRingPeak = 0; // the most uniform bytes one frame has used
 +
 +    VkCommandBuffer mUploadCmd = VK_NULL_HANDLE;
 +
@@ -3665,10 +3675,10 @@ index 15c5415f..6f2942ff 100644
          if (mVsyncEnabled) {
 diff --git a/src/fast/backends/gfx_vulkan.cpp b/src/fast/backends/gfx_vulkan.cpp
 new file mode 100644
-index 00000000..d5564a0f
+index 00000000..cb1c645d
 --- /dev/null
 +++ b/src/fast/backends/gfx_vulkan.cpp
-@@ -0,0 +1,2681 @@
+@@ -0,0 +1,2821 @@
 +//
 +//  gfx_vulkan.cpp
 +//  libultraship
@@ -4652,7 +4662,10 @@ index 00000000..d5564a0f
 +    }
 +
 +    // Per-frame slots
-+    mVertexRingCapacity = 256 * 32 * 3 * sizeof(float) * 50;
++    // Initial sizes; a slot whose frame needs more grows its rings (GrowVertexRing,
++    // GrowUniformRing) instead of dropping draws. 16 MB of vertices holds about
++    // 120k fully featured triangles; vanilla scenes stay well under 4 MB.
++    mVertexRingCapacity = 16 * 1024 * 1024;
 +    mUniformRingCapacity = 8 * 1024 * 1024;
 +    for (uint32_t i = 0; i < VK_FRAMES_IN_FLIGHT; i++) {
 +        FrameSlot& slot = mFrames[i];
@@ -4664,7 +4677,9 @@ index 00000000..d5564a0f
 +
 +        VkDescriptorPoolSize poolSizes[2] = {
 +            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16384 * SHADER_MAX_TEXTURES },
-+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 8 },
++            // set 0 takes 4; GrowUniformRing allocates a new set 0 per growth (at most
++            // 4 doublings from 8 MB to the 128 MB cap), so leave room for those
++            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 4 * 8 },
 +        };
 +        VkDescriptorPoolCreateInfo dpi = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
 +        dpi.maxSets = 16384;
@@ -4684,6 +4699,8 @@ index 00000000..d5564a0f
 +        CreateBuffer(mUniformRingCapacity, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 +                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, slot.uniformBuffer,
 +                     slot.uniformMemory, &slot.uniformMapped);
++        slot.vertexCapacity = mVertexRingCapacity;
++        slot.uniformCapacity = mUniformRingCapacity;
 +        slot.stagingCapacity = 32 * 1024 * 1024;
 +        CreateBuffer(slot.stagingCapacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 +                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, slot.stagingBuffer,
@@ -4784,6 +4801,135 @@ index 00000000..d5564a0f
 +    slot.garbageMemory.clear();
 +}
 +
++void GfxRenderingAPIVK::WriteSet0(FrameSlot& slot) {
++    VkDescriptorSetAllocateInfo dsa = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
++    dsa.descriptorPool = slot.descriptorPool;
++    dsa.descriptorSetCount = 1;
++    dsa.pSetLayouts = &mSet0Layout;
++    VK_CHECK(vkAllocateDescriptorSets(mDevice, &dsa, &slot.set0));
++
++    VkDescriptorBufferInfo bufferInfos[4];
++    VkWriteDescriptorSet writes[4] = {};
++    const VkDeviceSize ranges[4] = { sizeof(VulkanFrameUniforms), sizeof(VulkanDrawUniforms), sizeof(LightingUniforms),
++                                     sizeof(TransformUniforms) };
++    for (uint32_t b = 0; b < 4; b++) {
++        bufferInfos[b] = { slot.uniformBuffer, 0, ranges[b] };
++        writes[b].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
++        writes[b].dstSet = slot.set0;
++        writes[b].dstBinding = b;
++        writes[b].descriptorCount = 1;
++        writes[b].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
++        writes[b].pBufferInfo = &bufferInfos[b];
++    }
++    vkUpdateDescriptorSets(mDevice, 4, writes, 0, nullptr);
++}
++
++bool GfxRenderingAPIVK::TryCreateHostBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer& buffer,
++                                            VkDeviceMemory& memory, uint8_t** mapped) {
++    buffer = VK_NULL_HANDLE;
++    memory = VK_NULL_HANDLE;
++    VkBufferCreateInfo bi = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
++    bi.size = size;
++    bi.usage = usage;
++    bi.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
++    if (vkCreateBuffer(mDevice, &bi, nullptr, &buffer) != VK_SUCCESS) {
++        buffer = VK_NULL_HANDLE;
++        return false;
++    }
++    VkMemoryRequirements req;
++    vkGetBufferMemoryRequirements(mDevice, buffer, &req);
++    VkMemoryAllocateInfo ai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
++    ai.allocationSize = req.size;
++    ai.memoryTypeIndex =
++        FindMemoryType(req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
++    if (vkAllocateMemory(mDevice, &ai, nullptr, &memory) != VK_SUCCESS) {
++        vkDestroyBuffer(mDevice, buffer, nullptr);
++        buffer = VK_NULL_HANDLE;
++        memory = VK_NULL_HANDLE;
++        return false;
++    }
++    if (vkBindBufferMemory(mDevice, buffer, memory, 0) != VK_SUCCESS ||
++        vkMapMemory(mDevice, memory, 0, VK_WHOLE_SIZE, 0, (void**)mapped) != VK_SUCCESS) {
++        vkDestroyBuffer(mDevice, buffer, nullptr);
++        vkFreeMemory(mDevice, memory, nullptr);
++        buffer = VK_NULL_HANDLE;
++        memory = VK_NULL_HANDLE;
++        return false;
++    }
++    return true;
++}
++
++// The vertex ring of the frame being recorded is full: replace it with one twice the
++// size. Draws already recorded keep reading the old buffer, which goes to the slot's
++// garbage and is freed once this slot's fence has signalled (CollectGarbage).
++bool GfxRenderingAPIVK::GrowVertexRing(FrameSlot& slot, size_t needed) {
++    static constexpr size_t kMaxVertexRing = 256 * 1024 * 1024;
++    size_t capacity = std::max<size_t>(slot.vertexCapacity, 1024 * 1024);
++    while (capacity < needed + mVertexRingOffset || capacity <= slot.vertexCapacity) {
++        capacity *= 2;
++    }
++    capacity = std::max(capacity, needed);
++    if (capacity > kMaxVertexRing) {
++        return false;
++    }
++    VkBuffer buffer;
++    VkDeviceMemory memory;
++    uint8_t* mapped = nullptr;
++    if (!TryCreateHostBuffer(capacity, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, buffer, memory, &mapped)) {
++        SPDLOG_ERROR("Vulkan: could not grow the vertex ring to {} MB", capacity >> 20);
++        return false;
++    }
++    slot.garbageBuffers.push_back(slot.vertexBuffer);
++    slot.garbageMemory.push_back(slot.vertexMemory);
++    SPDLOG_INFO("Vulkan: vertex ring {} MB -> {} MB (this frame: {} KB so far)", slot.vertexCapacity >> 20,
++                capacity >> 20, mVertexRingOffset >> 10);
++    slot.vertexBuffer = buffer;
++    slot.vertexMemory = memory;
++    slot.vertexMapped = mapped;
++    slot.vertexCapacity = capacity;
++    mVertexRingOffset = 0;
++    return true;
++}
++
++// As GrowVertexRing, for the uniform ring; set 0 points at the ring, so it is
++// re-created and every framebuffer re-binds it and re-pushes its uniform blocks.
++bool GfxRenderingAPIVK::GrowUniformRing(FrameSlot& slot, size_t needed) {
++    static constexpr size_t kMaxUniformRing = 128 * 1024 * 1024;
++    size_t capacity = slot.uniformCapacity * 2;
++    while (capacity < needed) {
++        capacity *= 2;
++    }
++    if (capacity > kMaxUniformRing) {
++        return false;
++    }
++    VkBuffer buffer;
++    VkDeviceMemory memory;
++    uint8_t* mapped = nullptr;
++    if (!TryCreateHostBuffer(capacity, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, buffer, memory, &mapped)) {
++        SPDLOG_ERROR("Vulkan: could not grow the uniform ring to {} MB", capacity >> 20);
++        return false;
++    }
++    slot.garbageBuffers.push_back(slot.uniformBuffer);
++    slot.garbageMemory.push_back(slot.uniformMemory);
++    SPDLOG_INFO("Vulkan: uniform ring {} MB -> {} MB", slot.uniformCapacity >> 20, capacity >> 20);
++    slot.uniformBuffer = buffer;
++    slot.uniformMemory = memory;
++    slot.uniformMapped = mapped;
++    slot.uniformCapacity = capacity;
++    mUniformRingOffset = 0;
++    WriteSet0(slot);
++    mFrameUniformOffset = UINT32_MAX;
++    mDrawUniformOffset = UINT32_MAX;
++    mLightingUniformOffset = UINT32_MAX;
++    mTransformUniformOffset = UINT32_MAX;
++    for (auto& fb : mFramebuffers) {
++        for (uint32_t i = 0; i < 4; i++) {
++            fb.mLastSet0Offsets[i] = UINT32_MAX;
++        }
++    }
++    return true;
++}
++
 +void GfxRenderingAPIVK::NewFrame() {
 +    FrameSlot& slot = mFrames[mFrameSlot];
 +
@@ -4805,29 +4951,9 @@ index 00000000..d5564a0f
 +    VK_CHECK(vkResetDescriptorPool(mDevice, slot.descriptorPool, 0));
 +
 +    // Re-create the static set 0 (pool reset destroyed it)
-+    {
-+        VkDescriptorSetAllocateInfo dsa = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
-+        dsa.descriptorPool = slot.descriptorPool;
-+        dsa.descriptorSetCount = 1;
-+        dsa.pSetLayouts = &mSet0Layout;
-+        VK_CHECK(vkAllocateDescriptorSets(mDevice, &dsa, &slot.set0));
++    WriteSet0(slot);
 +
-+        VkDescriptorBufferInfo bufferInfos[4];
-+        VkWriteDescriptorSet writes[4] = {};
-+        const VkDeviceSize ranges[4] = { sizeof(VulkanFrameUniforms), sizeof(VulkanDrawUniforms),
-+                                         sizeof(LightingUniforms), sizeof(TransformUniforms) };
-+        for (uint32_t b = 0; b < 4; b++) {
-+            bufferInfos[b] = { slot.uniformBuffer, 0, ranges[b] };
-+            writes[b].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-+            writes[b].dstSet = slot.set0;
-+            writes[b].dstBinding = b;
-+            writes[b].descriptorCount = 1;
-+            writes[b].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-+            writes[b].pBufferInfo = &bufferInfos[b];
-+        }
-+        vkUpdateDescriptorSets(mDevice, 4, writes, 0, nullptr);
-+    }
-+
++    mFrameVertexBytes = 0;
 +    mVertexRingOffset = 0;
 +    mUniformRingOffset = 0;
 +    mStagingOffset = 0;
@@ -5378,14 +5504,27 @@ index 00000000..d5564a0f
 +    FrameSlot& slot = mFrames[mFrameSlot];
 +    const uint32_t align = std::max<uint32_t>(256, (uint32_t)mDeviceProps.limits.minUniformBufferOffsetAlignment);
 +
++    // Room for every block this call may push; grow first so that the blocks of one
++    // draw always land in the same buffer.
++    const size_t worst = 4 * ((size_t)align + std::max({ sizeof(mFrameUniforms), sizeof(mDrawUniforms),
++                                                          sizeof(mLightingUniforms), sizeof(mTransformUniforms) }));
++    if (mUniformRingOffset + worst > slot.uniformCapacity) {
++        GrowUniformRing(slot, worst);
++    }
++
 +    auto pushBlock = [&](const void* data, size_t size) -> uint32_t {
 +        size_t offset = (mUniformRingOffset + align - 1) & ~((size_t)align - 1);
-+        if (offset + size > mUniformRingCapacity) {
-+            SPDLOG_ERROR("Vulkan: uniform ring overflow");
++        if (offset + size > slot.uniformCapacity) {
++            static uint64_t sLastLog = 0;
++            if (SDL_GetTicks64() - sLastLog > 1000) {
++                sLastLog = SDL_GetTicks64();
++                SPDLOG_ERROR("Vulkan: uniform ring overflow");
++            }
 +            return 0;
 +        }
 +        memcpy(slot.uniformMapped + offset, data, size);
 +        mUniformRingOffset = offset + size;
++        mUniformRingPeak = std::max(mUniformRingPeak, mUniformRingOffset);
 +        return (uint32_t)offset;
 +    };
 +
@@ -5524,14 +5663,21 @@ index 00000000..d5564a0f
 +
 +    // Vertex data
 +    size_t dataSize = sizeof(float) * buf_vbo_len;
-+    if (mVertexRingOffset + dataSize > mVertexRingCapacity) {
-+        SPDLOG_ERROR("Vulkan: vertex ring overflow, dropping draw");
++    if (mVertexRingOffset + dataSize > slot.vertexCapacity && !GrowVertexRing(slot, dataSize)) {
++        // still full (at the 256 MB cap, or out of memory): skip this draw, nothing else
++        static uint64_t sLastLog = 0;
++        if (SDL_GetTicks64() - sLastLog > 1000) {
++            sLastLog = SDL_GetTicks64();
++            SPDLOG_ERROR("Vulkan: vertex ring overflow, dropping draw");
++        }
 +        return;
 +    }
 +    memcpy(slot.vertexMapped + mVertexRingOffset, buf_vbo, dataSize);
 +    VkDeviceSize vbOffset = mVertexRingOffset;
 +    vkCmdBindVertexBuffers(cmd, 0, 1, &slot.vertexBuffer, &vbOffset);
 +    mVertexRingOffset += dataSize;
++    mFrameVertexBytes += dataSize;
++    mVertexRingPeak = std::max(mVertexRingPeak, mFrameVertexBytes);
 +
 +    vkCmdDraw(cmd, (uint32_t)(buf_vbo_num_tris * 3), 1, 0, 0);
 +}
@@ -6148,6 +6294,10 @@ index 00000000..d5564a0f
 +                SPDLOG_INFO("perf: {}x{} avg {:.1f} fps, 1% low {:.1f} fps, max {:.1f} ms, >20ms {}, >40ms {}, {} frames",
 +                            mSwapchainExtent.width, mSwapchainExtent.height, ps5_fps_avg, ps5_fps_low, ps5_frame_max,
 +                            over20, over40, n);
++                SPDLOG_INFO("perf: rings peak vertex {} KB of {} KB, uniform {} KB of {} KB", mVertexRingPeak >> 10,
++                            slot.vertexCapacity >> 10, mUniformRingPeak >> 10, slot.uniformCapacity >> 10);
++                mVertexRingPeak = 0;
++                mUniformRingPeak = 0;
 +#ifdef __PROSPERO__
 +                {
 +                    // memory headroom: libc heap in use / held from the system, peak RSS, flexible memory free
