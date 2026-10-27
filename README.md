@@ -169,8 +169,8 @@ effect can stutter once and not afterwards.
   start, an archive without a matching record (or one SoH itself reports as outdated) is renamed
   `oot.o2r.old` and rebuilt from the ROM in `/data/soh` with the usual progress screen, then the
   game carries on to the title screen; this happens once after updating. With no ROM there, the
-  archive is kept and a one-time notice asks for the ROM. A missing animation no longer crashes the game; the log names
-  the file.
+  archive is kept and a one-time notice asks for the ROM. A missing animation no longer
+  crashes the game; the log names the file.
 - Not reproduced yet, reports welcome with the log: a bright flash every few seconds in
   Kokiri Forest after starting the game, and the castle courtyard guards' timing.
 
