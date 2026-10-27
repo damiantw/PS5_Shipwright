@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 7951c1041..29312d8ba 100644
+index eb3c38752..1df179892 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -362,6 +362,10 @@ add_dependencies(ExtractAssets GenerateSohOtr)
@@ -113,7 +113,7 @@ index 391e374d7..28ec34899 100644
  
  extern "C" void gfx_texture_cache_clear();
 diff --git a/soh/soh/Extractor/Extract.cpp b/soh/soh/Extractor/Extract.cpp
-index 89da6e1b7..97680e552 100644
+index de16a265a..c26113f8c 100644
 --- a/soh/soh/Extractor/Extract.cpp
 +++ b/soh/soh/Extractor/Extract.cpp
 @@ -1,3 +1,5 @@
@@ -162,7 +162,7 @@ index 89da6e1b7..97680e552 100644
              roms.push_back((file.path()));
          }
      }
-@@ -467,6 +485,39 @@ bool Extractor::ManuallySearchForRomMatchingType(RomSearchMode searchMode) {
+@@ -479,6 +497,39 @@ bool Extractor::ManuallySearchForRomMatchingType(RomSearchMode searchMode) {
  }
  
  bool Extractor::RunFileStandalone(std::string rom) {
@@ -202,7 +202,7 @@ index 89da6e1b7..97680e552 100644
      if (std::filesystem::is_directory(rom)) {
          return false;
      }
-@@ -622,8 +673,19 @@ const char* Extractor::GetTorchVersionDir() const {
+@@ -634,8 +685,19 @@ const char* Extractor::GetTorchVersionDir() const {
      }
  }
  
@@ -222,7 +222,7 @@ index 89da6e1b7..97680e552 100644
  
      // create 6 random alphanumeric characters
      static const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-@@ -639,6 +701,109 @@ std::string Extractor::Mkdtemp() {
+@@ -651,6 +713,109 @@ std::string Extractor::Mkdtemp() {
      return tmppath;
  }
  
@@ -332,7 +332,7 @@ index 89da6e1b7..97680e552 100644
  static void MessageboxWorker();
  
  bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::atomic<size_t>* extractCount,
-@@ -648,6 +813,18 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+@@ -660,6 +825,18 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
  
      std::string srcDir = std::filesystem::absolute(installPath).string() + "/assets";
      exportdir = std::filesystem::absolute(exportdir).string();
@@ -351,8 +351,8 @@ index 89da6e1b7..97680e552 100644
      // Work this out in the temporary folder
      std::string tempdir = Mkdtemp();
  
-@@ -655,7 +832,15 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
-     *extractCount = 0;
+@@ -674,7 +851,15 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+     }
  
      // config.yml decides whether this is oot.o2r or oot-mq.o2r.
 +#ifdef __PROSPERO__
@@ -367,7 +367,7 @@ index 89da6e1b7..97680e552 100644
      bool success = !archiveName.empty();
  
      std::error_code ec;
-@@ -668,6 +853,10 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+@@ -687,6 +872,10 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
          }
      }
  
@@ -430,7 +430,7 @@ index e3a387749..497af0092 100644
      }
  
 diff --git a/soh/soh/OTRGlobals.cpp b/soh/soh/OTRGlobals.cpp
-index d336c3c5b..cf22883a4 100644
+index 67bd1777d..ae27acabf 100644
 --- a/soh/soh/OTRGlobals.cpp
 +++ b/soh/soh/OTRGlobals.cpp
 @@ -4,6 +4,8 @@
@@ -532,7 +532,7 @@ index d336c3c5b..cf22883a4 100644
      bool extractDone = false;
      ExtractSteps extractStep = ES_PORT_ARCHIVE;
      WindowsSteps windowsStep = WS_TEMP;
-@@ -451,7 +515,15 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -456,7 +520,15 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
      OSFatal();
  #endif
  
@@ -549,7 +549,7 @@ index d336c3c5b..cf22883a4 100644
          SohGui::RegisterPopup("Extractor assets not found",
                                "No O2R files found. Missing 'assets/' folder needed to generate OTR file.\nPlease "
                                "re-extract them from the download or.\n\nExiting...",
-@@ -587,6 +659,17 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -592,6 +664,17 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
              case ES_EXTRACT_ARGS: {
  #if !defined(__SWITCH__) && !defined(__WIIU__)
                  if (args.empty()) {
@@ -567,7 +567,7 @@ index d336c3c5b..cf22883a4 100644
                      SohGui::RegisterPopup(
                          "Run Ship of Harkinian", "All files have been processed. Run SoH?", "Yes", "No",
                          [&]() {
-@@ -609,6 +692,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -614,6 +697,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                  if (extract.RunFileStandalone(file)) {
                      bool doExtract = true;
                      std::string archive = (extract.IsMasterQuest() ? "oot-mq.o2r" : "oot.o2r");
@@ -582,7 +582,7 @@ index d336c3c5b..cf22883a4 100644
                      if (std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) + "/" + archive)) {
                          std::string msg = "Archive for current ROM, " + archive + ", already exists.\nExtract again?";
                          SohGui::RegisterPopup("Confirm Re-extract", msg.c_str(), "Yes", "No", [&]() {
-@@ -626,6 +717,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -633,6 +724,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                          });
                      }
                  } else {
@@ -597,7 +597,7 @@ index d336c3c5b..cf22883a4 100644
                      bool open = true;
                      std::string msg = "File\n" + std::string(file) + "\nis not a ROM or does not match supported ROMs.";
                      SohGui::RegisterPopup("SoH ROM Error", msg.c_str());
-@@ -644,6 +743,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -651,6 +750,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                              std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs("oot.o2r", appShortName));
  
                          if (!ootO2RExists) {
@@ -609,7 +609,7 @@ index d336c3c5b..cf22883a4 100644
                              SohGui::RegisterPopup(
                                  "No O2R Files", "No O2R files found. Generate one now?", "Yes", "No",
                                  [&]() { promptStep = PS_LOCAL; }, [&]() { exit(0); });
-@@ -661,6 +765,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -668,6 +772,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                              extract.GetRoms(args);
                          }
                          if (!args.empty()) {
@@ -623,7 +623,7 @@ index d336c3c5b..cf22883a4 100644
                              promptStep = PS_WAIT;
                              SohGui::RegisterPopup(
                                  "ROMs found", "ROMs found in application directory. Would you like to process them?",
-@@ -672,6 +783,24 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -679,6 +790,24 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                          continue;
                      }
                      case PS_FIRST: {
@@ -648,8 +648,25 @@ index d336c3c5b..cf22883a4 100644
                          if (!extract.ManuallySearchForRomMatchingType(RomSearchMode::Both)) {
                              promptStep = PS_FILE_CHECK;
                              continue;
-@@ -755,6 +884,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
-                     SohGui::RegisterPopup("Extraction Crashed", e.what(), "Close", "", []() { exit(1); });
+@@ -778,11 +907,28 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                 }
+                 lastExtractFailed = extractFailed;
+                 if (extractFailed) {
++#ifdef __PROSPERO__
++                    // PlayStation 5: say where the log is, and list the ROM on the "Game files
++                    // needed" screen that follows when no archive could be made
++                    SPDLOG_ERROR("PS5: conversion failed: {}", file);
++                    gPS5RejectedRoms += "\n- " + std::filesystem::path(file).filename().string() +
++                                        "\n   could not be converted (see /data/soh/logs/)";
++                    SohGui::RegisterPopup("Extraction Failed",
++                                          std::filesystem::path(file).filename().string() +
++                                              " could not be converted.\nThe log is in /data/soh/logs/.",
++                                          "OK", "");
++#else
+                     SohGui::RegisterPopup("Extraction Failed",
+                                           "The ROM could not be extracted. Check the log for details.", "OK", "");
++#endif
+                     extractFailed = false;
                  }
                  extractionTask.reset();
 +#ifdef __PROSPERO__
@@ -660,7 +677,7 @@ index d336c3c5b..cf22883a4 100644
              } else {
                  if (!ImGui::IsPopupOpen("ROM Extraction")) {
                      ImGui::OpenPopup("ROM Extraction");
-@@ -836,6 +970,11 @@ void OTRGlobals::Initialize() {
+@@ -864,6 +1010,11 @@ void OTRGlobals::Initialize() {
          static_cast<spdlog::level::level_enum>(CVarGetInteger(CVAR_DEVELOPER_TOOLS("LogLevel"), defaultLogLevel));
      context->InitLogging(logLevel, logLevel);
      Ship::Context::GetRawInstance()->GetLogger()->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
@@ -672,7 +689,7 @@ index d336c3c5b..cf22883a4 100644
  
      InitGfxDebugger();
      context->InitFileDropMgr();
-@@ -1007,7 +1146,11 @@ void OTRGlobals::ScaleImGui() {
+@@ -1035,7 +1186,11 @@ void OTRGlobals::ScaleImGui() {
      float scale = imguiScaleOptionToValue[imGuiScaleIndex];
      float newScale = scale / previousImGuiScale;
      ImGui::GetStyle().ScaleAllSizes(newScale);
@@ -684,7 +701,7 @@ index d336c3c5b..cf22883a4 100644
      previousImGuiScale = scale;
      previousImGuiScaleIndex = imGuiScaleIndex;
  }
-@@ -1519,6 +1662,102 @@ static void SetAppImageHome() {
+@@ -1547,6 +1702,102 @@ static void SetAppImageHome() {
  }
  #endif
  
@@ -787,7 +804,7 @@ index d336c3c5b..cf22883a4 100644
  extern "C" void InitOTR(int argc, char* argv[]) {
  #ifdef __linux__
      SetAppImageHome();
-@@ -1527,6 +1766,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
+@@ -1555,6 +1806,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
      OTRGlobals::Instance->RunExtract(argc, argv);
  
      OTRGlobals::Instance->Initialize();
@@ -797,7 +814,7 @@ index d336c3c5b..cf22883a4 100644
      CustomMessageManager::Instance = new CustomMessageManager();
      ItemTableManager::Instance = new ItemTableManager();
      GameInteractor::Instance = new GameInteractor();
-@@ -1662,7 +1904,77 @@ extern "C" uint64_t GetUnixTimestamp() {
+@@ -1690,7 +1944,77 @@ extern "C" uint64_t GetUnixTimestamp() {
      return (uint64_t)millis.count();
  }
  
@@ -875,7 +892,7 @@ index d336c3c5b..cf22883a4 100644
      auto gui = std::dynamic_pointer_cast<Fast::Fast3dGui>(Ship::Context::GetRawInstance()->GetWindow()->GetGui());
  #ifndef __WIIU__
      using Ship::KbScancode;
-@@ -1897,6 +2209,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
+@@ -1920,6 +2244,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
  std::map<std::string, SoundFontSample*> cachedCustomSFs;
  
  ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool isJapaneseFont) {
@@ -1156,10 +1173,10 @@ index 8b95fcbd3..3609d9532 100644
                      curModal.button1callback_();
                  }
 diff --git a/soh/soh/frame_interpolation.cpp b/soh/soh/frame_interpolation.cpp
-index 811f443ab..6ffdd0a6e 100644
+index b519830d7..038664c8d 100644
 --- a/soh/soh/frame_interpolation.cpp
 +++ b/soh/soh/frame_interpolation.cpp
-@@ -113,6 +113,16 @@ typedef pair<const void*, int> label;
+@@ -108,6 +108,16 @@ typedef pair<const void*, int> label;
  union Data {
      Data() {
      }
