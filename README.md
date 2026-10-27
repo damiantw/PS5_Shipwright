@@ -160,8 +160,10 @@ effect can stutter once and not afterwards.
 - The sun's lens flare and the glow around some lights (torches, fairies) are never drawn:
   the depth test that decides whether they're hidden runs before the frame is rendered.
 - Texture packs that replace whole scenes (e.g. Djipi's 3DS Experience, archive 30 "Hyrule
-  Field") can slow Hyrule Field down: that archive draws the field's full mesh once per
-  section, up to about seven times a frame. Disable just that archive if it's too slow.
+  Field") draw the field's full mesh once per section, up to about seven times a frame. Up to
+  01.000.000 this slowed Hyrule Field to 35-50 fps; from 01.000.001 the renderer reuses the
+  triangle state between triangles and the field runs at 60 fps at 4K on a base PS5, with the
+  odd short dip while running. If it's still too slow for you, disable just that archive.
 - A crash at the Lost Woods bridge (01.000.000, reported on a PS5 Pro) came from an animation
   missing from `oot.o2r`, most likely an archive made by another tool or port (e.g. PC SoH
   9.2.3 for another PS5 port) and left in `/data/soh`. From 01.000.001 the game records how
