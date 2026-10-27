@@ -166,9 +166,10 @@ effect can stutter once and not afterwards.
   missing from `oot.o2r`, most likely an archive made by another tool or port (e.g. PC SoH
   9.2.3 for another PS5 port) and left in `/data/soh`. From 01.000.001 the game records how
   each `oot.o2r` it builds was made (`oot.o2r.stamp`: port and SoH version, ROM SHA-1). At
-  start, an archive without a matching record is renamed `oot.o2r.old` and rebuilt from the
-  ROM in `/data/soh`; this happens once after updating. With no ROM there, the archive is kept
-  and a one-time notice says so. A missing animation no longer crashes the game; the log names
+  start, an archive without a matching record (or one SoH itself reports as outdated) is renamed
+  `oot.o2r.old` and rebuilt from the ROM in `/data/soh` with the usual progress screen, then the
+  game carries on to the title screen; this happens once after updating. With no ROM there, the
+  archive is kept and a one-time notice asks for the ROM. A missing animation no longer crashes the game; the log names
   the file.
 - Not reproduced yet, reports welcome with the log: a bright flash every few seconds in
   Kokiri Forest after starting the game, and the castle courtyard guards' timing.
@@ -178,9 +179,11 @@ effect can stutter once and not afterwards.
 - **"Game files needed" at start:** put a supported ROM (or `oot.o2r`) in `/data/soh/` and
   start again. The message lists each ROM it rejected and why; a truncated copy or one with
   an unknown checksum needs a fresh dump.
-- **"Game archive not verified" at start:** `oot.o2r` wasn't made by this version and there's no
-  ROM in `/data/soh` to rebuild it from. Put your ROM there and start again, or keep playing
-  if the game works.
+- **"Game files out of date" at start:** `oot.o2r` was made by another version or tool and there's
+  no ROM in `/data/soh` to rebuild it from. Put your ROM there and start the game again; it
+  rebuilds the files on its own (a few minutes) and keeps the old one as `oot.o2r.old`.
+- **"soh.o2r is outdated" at start:** the game folder mixes files from two versions. Copy the
+  whole `PPSA99320` folder from the release zip again; saves aren't affected.
 - **Saves or settings seem to reset:** the game probably couldn't use `/data/soh` and fell
   back to its own folder. Make sure it's launched through ShadowMountPlus (or similar).
 - **Anything else:** the log is `/data/soh/logs/Ship of Harkinian.log`. Include it when you
