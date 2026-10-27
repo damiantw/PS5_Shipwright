@@ -163,9 +163,13 @@ effect can stutter once and not afterwards.
   Field") can slow Hyrule Field down: that archive draws the field's full mesh once per
   section, up to about seven times a frame. Disable just that archive if it's too slow.
 - A crash at the Lost Woods bridge (01.000.000, reported on a PS5 Pro) came from an animation
-  missing from `oot.o2r`. The game now carries on and names the missing file in the log; if
-  you see "could not be loaded" there, delete `/data/soh/oot.o2r` and start the game again
-  to rebuild it from your ROM.
+  missing from `oot.o2r`, most likely an archive made by another tool or port (e.g. PC SoH
+  9.2.3 for another PS5 port) and left in `/data/soh`. From 01.000.001 the game records how
+  each `oot.o2r` it builds was made (`oot.o2r.stamp`: port and SoH version, ROM SHA-1). At
+  start, an archive without a matching record is renamed `oot.o2r.old` and rebuilt from the
+  ROM in `/data/soh`; this happens once after updating. With no ROM there, the archive is kept
+  and a one-time notice says so. A missing animation no longer crashes the game; the log names
+  the file.
 - Not reproduced yet, reports welcome with the log: a bright flash every few seconds in
   Kokiri Forest after starting the game, and the castle courtyard guards' timing.
 
@@ -174,6 +178,9 @@ effect can stutter once and not afterwards.
 - **"Game files needed" at start:** put a supported ROM (or `oot.o2r`) in `/data/soh/` and
   start again. The message lists each ROM it rejected and why; a truncated copy or one with
   an unknown checksum needs a fresh dump.
+- **"Game archive not verified" at start:** `oot.o2r` wasn't made by this version and there's no
+  ROM in `/data/soh` to rebuild it from. Put your ROM there and start again, or keep playing
+  if the game works.
 - **Saves or settings seem to reset:** the game probably couldn't use `/data/soh` and fell
   back to its own folder. Make sure it's launched through ShadowMountPlus (or similar).
 - **Anything else:** the log is `/data/soh/logs/Ship of Harkinian.log`. Include it when you

@@ -113,7 +113,7 @@ index 391e374d7..28ec34899 100644
  
  extern "C" void gfx_texture_cache_clear();
 diff --git a/soh/soh/Extractor/Extract.cpp b/soh/soh/Extractor/Extract.cpp
-index de16a265a..c26113f8c 100644
+index de16a265a..a0d812694 100644
 --- a/soh/soh/Extractor/Extract.cpp
 +++ b/soh/soh/Extractor/Extract.cpp
 @@ -1,3 +1,5 @@
@@ -222,7 +222,7 @@ index de16a265a..c26113f8c 100644
  
      // create 6 random alphanumeric characters
      static const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-@@ -651,6 +713,109 @@ std::string Extractor::Mkdtemp() {
+@@ -651,6 +713,202 @@ std::string Extractor::Mkdtemp() {
      return tmppath;
  }
  
@@ -329,10 +329,103 @@ index de16a265a..c26113f8c 100644
 +}
 +#endif
 +
++#ifdef __PROSPERO__
++#include "../../../torch/lib/TinySHA1.hpp"
++
++static std::string Ps5Sha1Hex(const std::vector<uint8_t>& data) {
++    sha1::SHA1 s;
++    s.processBytes(data.data(), data.size());
++    uint32_t d[5];
++    s.getDigest(d);
++    char buf[41];
++    snprintf(buf, sizeof(buf), "%08x%08x%08x%08x%08x", d[0], d[1], d[2], d[3], d[4]);
++    return buf;
++}
++
++static std::string Ps5SohVersion() {
++    char v[18];
++    snprintf(v, sizeof(v), "%d.%d.%d", gBuildVersionMajor, gBuildVersionMinor, gBuildVersionPatch);
++    return v;
++}
++
++// The port's release (param.json's contentVersion) and build (build_id.txt), for the record
++static std::string Ps5PortVersion(const std::string& installPath) {
++    std::string version = "unknown", build;
++    std::ifstream param(installPath + "/sce_sys/param.json");
++    std::string text((std::istreambuf_iterator<char>(param)), std::istreambuf_iterator<char>());
++    size_t key = text.find("\"contentVersion\"");
++    if (key != std::string::npos) {
++        size_t colon = text.find(':', key);
++        size_t q1 = colon == std::string::npos ? colon : text.find('"', colon);
++        size_t q2 = q1 == std::string::npos ? q1 : text.find('"', q1 + 1);
++        if (q2 != std::string::npos) {
++            version = text.substr(q1 + 1, q2 - q1 - 1);
++        }
++    }
++    std::ifstream(installPath + "/build_id.txt") >> build;
++    return build.empty() ? version : version + " (" + build + ")";
++}
++
++bool Ps5O2RStampMatches(const std::string& archivePath, std::string* why) {
++    std::ifstream in(archivePath + ".stamp");
++    if (!in) {
++        *why = "no provenance stamp (made by another tool or port, or by 01.000.000)";
++        return false;
++    }
++    std::string line, madeBy, soh, size;
++    while (std::getline(in, line)) {
++        size_t sp = line.find(' ');
++        if (sp == std::string::npos) {
++            continue;
++        }
++        std::string key = line.substr(0, sp), value = line.substr(sp + 1);
++        if (key == "made-by") {
++            madeBy = value;
++        } else if (key == "soh") {
++            soh = value;
++        } else if (key == "o2r-size") {
++            size = value;
++        }
++    }
++    std::error_code ec;
++    const uintmax_t actual = std::filesystem::file_size(archivePath, ec);
++    if (madeBy != "PS5_Shipwright") {
++        *why = "the stamp was not written by this port";
++    } else if (soh != Ps5SohVersion()) {
++        *why = "made for SoH " + soh + ", this is SoH " + Ps5SohVersion();
++    } else if (ec || size != std::to_string(actual)) {
++        *why = "the archive was replaced after it was made (size " + std::to_string(actual) + ", stamp says " +
++               size + ")";
++    } else {
++        return true;
++    }
++    return false;
++}
++
++void Ps5WriteO2RStamp(const std::string& archivePath, const std::string& installPath, const std::string& romPath,
++                      const std::string& romSha1) {
++    std::error_code ec;
++    const uintmax_t size = std::filesystem::file_size(archivePath, ec);
++    if (ec) {
++        return;
++    }
++    {
++        std::ofstream out(archivePath + ".stamp", std::ios::trunc);
++        out << "made-by PS5_Shipwright\n"
++            << "port " << Ps5PortVersion(installPath) << "\n"
++            << "soh " << Ps5SohVersion() << "\n"
++            << "rom " << std::filesystem::path(romPath).filename().string() << "\n"
++            << "rom-sha1 " << romSha1 << "\n"
++            << "o2r-size " << size << "\n";
++    }
++    SPDLOG_INFO("PS5: wrote {}.stamp (SoH {}, ROM SHA-1 {})", archivePath, Ps5SohVersion(), romSha1);
++}
++#endif
++
  static void MessageboxWorker();
  
  bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::atomic<size_t>* extractCount,
-@@ -660,6 +825,18 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+@@ -660,12 +918,27 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
  
      std::string srcDir = std::filesystem::absolute(installPath).string() + "/assets";
      exportdir = std::filesystem::absolute(exportdir).string();
@@ -351,7 +444,16 @@ index de16a265a..c26113f8c 100644
      // Work this out in the temporary folder
      std::string tempdir = Mkdtemp();
  
-@@ -674,7 +851,15 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+     *totalExtract = SohTorch::CountAssetFiles(srcDir + "/" + GetTorchVersionDir());
+     *extractCount = 0;
+ 
++#ifdef __PROSPERO__
++    const std::string romSha1 = Ps5Sha1Hex(mRomData);
++#endif
+     // MQ debug dumps only hold 54MB of data, the rest is dump-specific padding, and some have
+     // the region byte changed. Trim and restore it so every dump matches the one config.yml hash.
+     if (GetRomVerCrc() == OOT_PAL_GC_MQ_DBG && mRomData.size() == MB64) {
+@@ -674,7 +947,15 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
      }
  
      // config.yml decides whether this is oot.o2r or oot-mq.o2r.
@@ -367,9 +469,16 @@ index de16a265a..c26113f8c 100644
      bool success = !archiveName.empty();
  
      std::error_code ec;
-@@ -687,6 +872,10 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+@@ -686,7 +967,17 @@ bool Extractor::CallTorch(std::string installPath, std::string exportdir, std::a
+             success = false;
          }
      }
++#ifdef __PROSPERO__
++    if (success) {
++        Ps5WriteO2RStamp(exportdir + "/" + archiveName, std::filesystem::absolute(installPath).string(),
++                         mCurrentRomPath, romSha1);
++    }
++#endif
  
 +#ifdef __PROSPERO__
 +    fprintf(stderr, "extractor: perf copy+total %.1f s since torch start\n",
@@ -379,20 +488,36 @@ index de16a265a..c26113f8c 100644
  
      return success;
 diff --git a/soh/soh/Extractor/Extract.h b/soh/soh/Extractor/Extract.h
-index aa6674bde..eba03f84d 100644
+index aa6674bde..500008200 100644
 --- a/soh/soh/Extractor/Extract.h
 +++ b/soh/soh/Extractor/Extract.h
-@@ -63,6 +63,10 @@ class Extractor {
+@@ -63,8 +63,26 @@ class Extractor {
      void SetSearchPath(const std::string& path);
      void GetRoms(std::vector<std::string>& roms);
      bool RunFileStandalone(std::string file);
 +#ifdef __PROSPERO__
 +    // why the last RunFileStandalone call rejected its file (PS5 shows it on screen)
 +    std::string mLastError;
++    // the ROM file RunFileStandalone accepted
++    const std::string& CurrentRomPath() const {
++        return mCurrentRomPath;
++    }
 +#endif
      bool Run(std::string searchPath, RomSearchMode searchMode = RomSearchMode::Both);
      bool CallTorch(std::string installPath, std::string exportdir, std::atomic<size_t>* extractCount,
                     std::atomic<size_t>* totalExtract);
+     std::string Mkdtemp();
+ };
++
++#ifdef __PROSPERO__
++// PS5: provenance of an archive made from a ROM on the console. Beside <archive> (oot.o2r,
++// oot-mq.o2r) the conversion writes <archive>.stamp naming this port, the SoH version, the
++// ROM's SHA-1 and the archive's size. Ps5O2RStampMatches says whether the archive there now
++// is that one, from this SoH version; *why gets the reason when it is not.
++bool Ps5O2RStampMatches(const std::string& archivePath, std::string* why);
++void Ps5WriteO2RStamp(const std::string& archivePath, const std::string& installPath, const std::string& romPath,
++                      const std::string& romSha1);
++#endif
 diff --git a/soh/soh/Extractor/TorchExtract.cpp b/soh/soh/Extractor/TorchExtract.cpp
 index e3a387749..497af0092 100644
 --- a/soh/soh/Extractor/TorchExtract.cpp
@@ -430,7 +555,7 @@ index e3a387749..497af0092 100644
      }
  
 diff --git a/soh/soh/OTRGlobals.cpp b/soh/soh/OTRGlobals.cpp
-index 67bd1777d..90bd0e24e 100644
+index 67bd1777d..2b6164ac7 100644
 --- a/soh/soh/OTRGlobals.cpp
 +++ b/soh/soh/OTRGlobals.cpp
 @@ -4,6 +4,8 @@
@@ -506,7 +631,7 @@ index 67bd1777d..90bd0e24e 100644
      ScaleImGui();
  }
  
-@@ -408,7 +454,25 @@ static bool RemoveArchiveAcrossAppDirs(const std::string& fileName) {
+@@ -408,13 +454,112 @@ static bool RemoveArchiveAcrossAppDirs(const std::string& fileName) {
      return !std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs(fileName, appShortName));
  }
  
@@ -515,6 +640,84 @@ index 67bd1777d..90bd0e24e 100644
 +static std::string gPS5RejectedRoms;
 +// the log level to restore after a ROM conversion (Torch changes spdlog's global level and pattern)
 +static spdlog::level::level_enum gPS5LogLevel = spdlog::level::info;
++#endif
++
++#ifdef __PROSPERO__
++// set when an archive without a matching provenance stamp was moved aside: convert the ROMs
++// even though another archive (the other of vanilla / Master Quest) is still there
++static bool gPS5RebuildArchives = false;
++
++// PlayStation 5: an oot.o2r / oot-mq.o2r in /data/soh that this port did not make for this
++// SoH version (for instance one left there by another PS5 port, made by PC SoH 9.2.3) can lack
++// or differ in resources and crash the game far from the cause. If a ROM of the same kind is
++// in /data/soh, the archive is renamed to <name>.old and rebuilt from it; if not, it is kept,
++// with a warning in the log and a notice on screen, once per archive.
++static void Ps5CheckArchiveProvenance() {
++    const std::string dataDir = std::filesystem::absolute(Ship::Context::GetAppDirectoryPath(appShortName)).string();
++    const std::string installDir = std::filesystem::absolute(Ship::Context::GetAppBundlePath()).string();
++    std::vector<std::string> roms;
++    bool scanned = false;
++    for (bool mq : { false, true }) {
++        const std::string name = mq ? "oot-mq.o2r" : "oot.o2r";
++        const std::string path = dataDir + "/" + name;
++        if (!std::filesystem::exists(path)) {
++            continue;
++        }
++        std::string why;
++        if (Ps5O2RStampMatches(path, &why)) {
++            SPDLOG_INFO("PS5: {} was made by this port for this SoH version", name);
++            continue;
++        }
++        SPDLOG_WARN("PS5: {} is not one this port made for this SoH version: {}", path, why);
++        if (!scanned) {
++            Extractor finder;
++            finder.SetSearchPath(installDir);
++            finder.GetRoms(roms);
++            if (installDir != dataDir) {
++                finder.SetSearchPath(dataDir);
++                finder.GetRoms(roms);
++            }
++            scanned = true;
++        }
++        std::string rom;
++        for (const std::string& candidate : roms) {
++            Extractor check;
++            if (check.RunFileStandalone(candidate) && check.IsMasterQuest() == mq) {
++                rom = candidate;
++                break;
++            }
++        }
++        std::error_code ec;
++        if (!rom.empty()) {
++            std::filesystem::remove(path + ".old", ec);
++            std::filesystem::rename(path, path + ".old", ec);
++            if (!ec) {
++                std::filesystem::remove(path + ".stamp", ec);
++                std::filesystem::remove(path + ".unverified", ec);
++                SPDLOG_WARN("PS5: renamed {} to {}.old; rebuilding it from {}", name, name, rom);
++                gPS5RebuildArchives = true;
++                continue;
++            }
++            SPDLOG_ERROR("PS5: could not rename {}: {}; using it as it is", path, ec.message());
++        }
++        // No ROM to rebuild it from: keep it, and say so once per archive (by its size)
++        const std::string size = std::to_string(std::filesystem::file_size(path, ec));
++        std::string noticed;
++        std::ifstream(path + ".unverified") >> noticed;
++        SPDLOG_WARN("PS5: no {} ROM in {} to rebuild {} from; using it as it is. If the game crashes or "
++                    "things are missing, copy your ROM there and start again.",
++                    mq ? "Master Quest" : "vanilla", dataDir, name);
++        if (noticed != size) {
++            std::ofstream(path + ".unverified", std::ios::trunc) << size << "\n";
++            std::string msg = "/data/soh/" + name + " was not made by this version of the game\n(" + why +
++                              ").\n\nIt is used as it is, but an archive made by another port or SoH\n"
++                              "version can crash the game or miss things. To rebuild it, copy\nyour " +
++                              (mq ? std::string("Master Quest ROM") : std::string("ROM")) +
++                              " (.z64, .n64 or .v64) to /data/soh/ and start the game again.";
++            SohGui::RegisterPopup("Game archive not verified", msg);
++        }
++    }
++}
 +#endif
 +
  void OTRGlobals::RunExtract(int argc, char* argv[]) {
@@ -532,7 +735,16 @@ index 67bd1777d..90bd0e24e 100644
      bool extractDone = false;
      ExtractSteps extractStep = ES_PORT_ARCHIVE;
      WindowsSteps windowsStep = WS_TEMP;
-@@ -456,7 +520,15 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+     auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(OTRGlobals::Instance->context->GetWindow());
+     auto gui = wnd->GetGui();
+ 
++#ifdef __PROSPERO__
++    Ps5CheckArchiveProvenance();
++#endif
+     OTRVersion vanillaVersion = DetectOTRVersion("oot.o2r", false);
+     OTRVersion mqVersion = DetectOTRVersion("oot-mq.o2r", true);
+ 
+@@ -456,7 +601,15 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
      OSFatal();
  #endif
  
@@ -549,12 +761,23 @@ index 67bd1777d..90bd0e24e 100644
          SohGui::RegisterPopup("Extractor assets not found",
                                "No O2R files found. Missing 'assets/' folder needed to generate OTR file.\nPlease "
                                "re-extract them from the download or.\n\nExiting...",
-@@ -592,6 +664,17 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -592,6 +745,28 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
              case ES_EXTRACT_ARGS: {
  #if !defined(__SWITCH__) && !defined(__WIIU__)
                  if (args.empty()) {
 +#ifdef __PROSPERO__
 +                    // PlayStation 5: all ROMs processed: start the game if an archive exists
++                    // (an archive moved aside for a rebuild that did not happen goes back)
++                    for (const char* name : { "oot.o2r", "oot-mq.o2r" }) {
++                        const std::string path = Ship::Context::GetAppDirectoryPath(appShortName) + "/" + name;
++                        std::error_code ec;
++                        if (gPS5RebuildArchives && !std::filesystem::exists(path) &&
++                            std::filesystem::exists(path + ".old")) {
++                            std::filesystem::rename(path + ".old", path, ec);
++                            SPDLOG_WARN("PS5: rebuilding {} failed; using the old one again{}", name,
++                                        ec ? " (could not rename it back: " + ec.message() + ")" : "");
++                        }
++                    }
 +                    if (!std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) + "/oot.o2r") &&
 +                        !std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) + "/oot-mq.o2r")) {
 +                        extractStep = ES_EXTRACT;
@@ -567,7 +790,7 @@ index 67bd1777d..90bd0e24e 100644
                      SohGui::RegisterPopup(
                          "Run Ship of Harkinian", "All files have been processed. Run SoH?", "Yes", "No",
                          [&]() {
-@@ -614,6 +697,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -614,6 +789,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                  if (extract.RunFileStandalone(file)) {
                      bool doExtract = true;
                      std::string archive = (extract.IsMasterQuest() ? "oot-mq.o2r" : "oot.o2r");
@@ -582,7 +805,7 @@ index 67bd1777d..90bd0e24e 100644
                      if (std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) + "/" + archive)) {
                          std::string msg = "Archive for current ROM, " + archive + ", already exists.\nExtract again?";
                          SohGui::RegisterPopup("Confirm Re-extract", msg.c_str(), "Yes", "No", [&]() {
-@@ -633,6 +724,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -633,6 +816,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                          });
                      }
                  } else {
@@ -597,10 +820,15 @@ index 67bd1777d..90bd0e24e 100644
                      bool open = true;
                      std::string msg = "File\n" + std::string(file) + "\nis not a ROM or does not match supported ROMs.";
                      SohGui::RegisterPopup("SoH ROM Error", msg.c_str());
-@@ -651,6 +750,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -650,7 +841,16 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                                 Ship::Context::LocateFileAcrossAppDirs("oot-mq.o2r", appShortName)) ||
                              std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs("oot.o2r", appShortName));
  
++#ifdef __PROSPERO__
++                        if (!ootO2RExists || gPS5RebuildArchives) {
++#else
                          if (!ootO2RExists) {
++#endif
 +#ifdef __PROSPERO__
 +                            // PlayStation 5: look for ROMs in the data folder straight away
 +                            promptStep = PS_LOCAL;
@@ -609,7 +837,7 @@ index 67bd1777d..90bd0e24e 100644
                              SohGui::RegisterPopup(
                                  "No O2R Files", "No O2R files found. Generate one now?", "Yes", "No",
                                  [&]() { promptStep = PS_LOCAL; }, [&]() { exit(0); });
-@@ -668,6 +772,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -668,6 +868,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                              extract.GetRoms(args);
                          }
                          if (!args.empty()) {
@@ -623,7 +851,7 @@ index 67bd1777d..90bd0e24e 100644
                              promptStep = PS_WAIT;
                              SohGui::RegisterPopup(
                                  "ROMs found", "ROMs found in application directory. Would you like to process them?",
-@@ -679,6 +790,24 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -679,6 +886,24 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                          continue;
                      }
                      case PS_FIRST: {
@@ -648,7 +876,7 @@ index 67bd1777d..90bd0e24e 100644
                          if (!extract.ManuallySearchForRomMatchingType(RomSearchMode::Both)) {
                              promptStep = PS_FILE_CHECK;
                              continue;
-@@ -778,11 +907,28 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+@@ -778,11 +1003,28 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                  }
                  lastExtractFailed = extractFailed;
                  if (extractFailed) {
@@ -677,7 +905,7 @@ index 67bd1777d..90bd0e24e 100644
              } else {
                  if (!ImGui::IsPopupOpen("ROM Extraction")) {
                      ImGui::OpenPopup("ROM Extraction");
-@@ -864,6 +1010,11 @@ void OTRGlobals::Initialize() {
+@@ -864,6 +1106,11 @@ void OTRGlobals::Initialize() {
          static_cast<spdlog::level::level_enum>(CVarGetInteger(CVAR_DEVELOPER_TOOLS("LogLevel"), defaultLogLevel));
      context->InitLogging(logLevel, logLevel);
      Ship::Context::GetRawInstance()->GetLogger()->set_pattern("[%H:%M:%S.%e] [%s:%#] [%^%l%$] %v");
@@ -689,7 +917,7 @@ index 67bd1777d..90bd0e24e 100644
  
      InitGfxDebugger();
      context->InitFileDropMgr();
-@@ -1035,7 +1186,11 @@ void OTRGlobals::ScaleImGui() {
+@@ -1035,7 +1282,11 @@ void OTRGlobals::ScaleImGui() {
      float scale = imguiScaleOptionToValue[imGuiScaleIndex];
      float newScale = scale / previousImGuiScale;
      ImGui::GetStyle().ScaleAllSizes(newScale);
@@ -701,7 +929,7 @@ index 67bd1777d..90bd0e24e 100644
      previousImGuiScale = scale;
      previousImGuiScaleIndex = imGuiScaleIndex;
  }
-@@ -1547,6 +1702,102 @@ static void SetAppImageHome() {
+@@ -1547,6 +1798,102 @@ static void SetAppImageHome() {
  }
  #endif
  
@@ -804,7 +1032,7 @@ index 67bd1777d..90bd0e24e 100644
  extern "C" void InitOTR(int argc, char* argv[]) {
  #ifdef __linux__
      SetAppImageHome();
-@@ -1555,6 +1806,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
+@@ -1555,6 +1902,9 @@ extern "C" void InitOTR(int argc, char* argv[]) {
      OTRGlobals::Instance->RunExtract(argc, argv);
  
      OTRGlobals::Instance->Initialize();
@@ -814,7 +1042,7 @@ index 67bd1777d..90bd0e24e 100644
      CustomMessageManager::Instance = new CustomMessageManager();
      ItemTableManager::Instance = new ItemTableManager();
      GameInteractor::Instance = new GameInteractor();
-@@ -1690,7 +1944,96 @@ extern "C" uint64_t GetUnixTimestamp() {
+@@ -1690,7 +2040,96 @@ extern "C" uint64_t GetUnixTimestamp() {
      return (uint64_t)millis.count();
  }
  
@@ -911,7 +1139,7 @@ index 67bd1777d..90bd0e24e 100644
      auto gui = std::dynamic_pointer_cast<Fast::Fast3dGui>(Ship::Context::GetRawInstance()->GetWindow()->GetGui());
  #ifndef __WIIU__
      using Ship::KbScancode;
-@@ -1920,6 +2263,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
+@@ -1920,6 +2359,9 @@ extern "C" uint8_t GetSeedIconIndex(uint8_t index) {
  std::map<std::string, SoundFontSample*> cachedCustomSFs;
  
  ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath, bool isJapaneseFont) {
