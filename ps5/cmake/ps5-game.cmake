@@ -48,6 +48,17 @@ set(ZLIB_LIBRARY ${ps5_platform_archive} CACHE FILEPATH "" FORCE)
 add_library(ps5_platform STATIC ${ps5}/src/platform.c ${ps5}/src/shims.c ${ps5}/src/startup.c
 	${ps5}/src/devloop_shot.c)
 target_include_directories(ps5_platform PUBLIC ${ps5}/src)
+# The crash handler (every build: it writes /data/soh/logs/crash-*.txt, no network)
+target_sources(ps5_platform PRIVATE ${ps5}/src/crash.c)
+
+# Developer tools (DEVTOOLS.md): a debug server for scripted tests. Only a dev build
+# (PS5_DEVTOOLS=1 ps5/tools/build.sh) compiles it in; a release has none of its code, and
+# a dev build only starts it when /data/soh/devtools.enable exists.
+option(PS5_DEVTOOLS "build the developer tools (debug server) into the title: never for a release" OFF)
+if(PS5_DEVTOOLS)
+	add_compile_definitions(PS5_DEVTOOLS=1)
+	message(STATUS "ps5-game.cmake: PS5_DEVTOOLS=ON (a dev build, not for release)")
+endif()
 file(READ ${ps5}/sce_sys/param.json param_json)
 string(JSON PS5_TITLE_NAME GET "${param_json}" localizedParameters en-US titleName)
 target_compile_definitions(ps5_platform PRIVATE "PS5_TITLE_NAME=\"${PS5_TITLE_NAME}\"")
@@ -208,6 +219,14 @@ set(CMAKE_CXX_LINK_EXECUTABLE
 # depend on it by itself (the game's target exists once its CMakeLists.txt has run)
 function(ps5_late_fixes)
 	add_dependencies(soh ps5_platform)
+	# what the crash report says about the game (scene, Link): every build
+	target_sources(soh PRIVATE ${ps5}/src/crash_context.c)
+	target_include_directories(soh PRIVATE ${ps5}/src)
+	if(PS5_DEVTOOLS)
+		# the debug server reads the game's own state: built with the game's includes
+		target_sources(soh PRIVATE ${ps5}/src/devtools/devtools_server.cpp ${ps5}/src/devtools/devtools_game.cpp)
+		target_include_directories(soh PRIVATE ${ps5}/src/devtools)
+	endif()
 	set_property(TARGET soh APPEND PROPERTY LINK_DEPENDS ${ps5_platform_archive})
 endfunction()
 cmake_language(DEFER DIRECTORY ${CMAKE_SOURCE_DIR} CALL ps5_late_fixes)

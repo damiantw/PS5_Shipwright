@@ -1,0 +1,7 @@
+# The game reaches the title screen or the file select after a launch (start the
+# title first, e.g. ps5/tools/run.sh; the test waits up to 3 minutes for it).
+steps:
+  - wait_any_state: {states: [title, file_select, play], timeout: 180}
+  - frames: 40
+  - screenshot: title
+  - log_tail: 15

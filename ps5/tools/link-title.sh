@@ -158,10 +158,32 @@ cp "$vulkan/runtime/libc.prx" "$app/sce_module/libc.prx"
 # combiner keys (IDs only) the start-up warm-up compiles into /data/soh/cache; see ps5/shader_keys.txt
 if [[ -f $ps5/shader_keys.txt ]]; then cp "$ps5/shader_keys.txt" "$app/shader_keys.txt"; fi
 mv "$work/eboot.elf.new" "$work/eboot.elf"
+# A dev build (PS5_DEVTOOLS, DEVTOOLS.md) says so in its folder: release.sh refuses to pack one
+devtools=false
+grep -q " T ps5_devtools_start$" <<<"$("$sdk/bin/llvm-nm" --defined-only "$work/link/llvm-pie.elf" 2>/dev/null)" && devtools=true
+if $devtools; then
+    echo "a dev build (developer tools, DEVTOOLS.md): never release it" > "$app/DEVTOOLS_BUILD.txt"
+else
+    rm -f "$app/DEVTOOLS_BUILD.txt"
+fi
 # The linked ELF of the title last packaged, for tools/run.sh to symbolise a crash with
-# (the game's build tree may be on the VM's own disk)
+# (the game's build tree may be on the VM's own disk); a dev build's beside it
 mkdir -p "$root/build"
-cp "$work/link/llvm-pie.elf" "$root/build/last-title.elf"
+if $devtools; then
+    cp "$work/link/llvm-pie.elf" "$root/build/last-title-dev.elf"
+else
+    cp "$work/link/llvm-pie.elf" "$root/build/last-title.elf"
+fi
+# The symbol table the crash handler names frames with (/app0/eboot.sym; a release ships it
+# as a separate asset, see release.yml), from the same ELF
+python3 "$ps5/tools/make-sym.py" --nm "$sdk/bin/llvm-nm" "$work/link/llvm-pie.elf" "$work/eboot.sym"
+if $devtools; then
+    cp "$work/eboot.sym" "$app/eboot.sym"
+    cp "$work/eboot.sym" "$root/build/last-title-dev.sym"
+else
+    rm -f "$app/eboot.sym"
+    cp "$work/eboot.sym" "$root/build/last-title.sym"
+fi
 archive_revision=$(sed -n 's/^revision: //p' "$(dirname "$(dirname "$archive")")/PROVENANCE.txt" 2>/dev/null || true)
 printf '==> %s: %s (eboot.bin %s bytes; RADV %s)\n' "$title_id" "$app" \
     "$(stat -c %s "$app/eboot.bin")" "${archive_revision:0:11}"

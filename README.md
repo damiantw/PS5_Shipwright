@@ -210,6 +210,8 @@ are kept as patches in `ps5/patches/`; after editing files under `vendor/`, save
 
 Never commit a ROM or an `.o2r` made from one; `.gitignore` blocks them.
 
+Dev builds with a debug server, crash reports and symbols for testing: see [DEVTOOLS.md](DEVTOOLS.md).
+
 ## Releasing
 
 - The version and title id come from `ps5/sce_sys/param.json` (`titleId` PPSA99320,

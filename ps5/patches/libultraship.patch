@@ -3675,10 +3675,10 @@ index 15c5415f..6f2942ff 100644
          if (mVsyncEnabled) {
 diff --git a/src/fast/backends/gfx_vulkan.cpp b/src/fast/backends/gfx_vulkan.cpp
 new file mode 100644
-index 00000000..e63fc5f4
+index 00000000..6c7540ad
 --- /dev/null
 +++ b/src/fast/backends/gfx_vulkan.cpp
-@@ -0,0 +1,2841 @@
+@@ -0,0 +1,2850 @@
 +//
 +//  gfx_vulkan.cpp
 +//  libultraship
@@ -3716,6 +3716,11 @@ index 00000000..e63fc5f4
 +// PS5 DevLoop's grab (ps5/src/devloop_shot.c): the frame on screen, when asked for
 +extern "C" bool ps5_shot_requested(void);
 +extern "C" void ps5_shot_write(const uint8_t* pixels, int width, int height, bool bgr);
++#ifdef PS5_DEVTOOLS
++// the dev build's debug server (ps5/src/devtools): frame times and ring use, every present
++extern "C" void ps5_devtools_present(uint32_t width, uint32_t height, size_t vertex_peak, size_t vertex_cap,
++                                     size_t uniform_peak, size_t uniform_cap);
++#endif
 +#endif
 +
 +#include <vector>
@@ -6284,6 +6289,10 @@ index 00000000..e63fc5f4
 +        static const bool report = !(getenv("GHOSTSHIP_PS5_FPS") && getenv("GHOSTSHIP_PS5_FPS")[0] == '0');
 +        static uint64_t last, since;
 +        static std::vector<float> ms;
++#ifdef PS5_DEVTOOLS
++        ps5_devtools_present(mSwapchainExtent.width, mSwapchainExtent.height, mVertexRingPeak, slot.vertexCapacity,
++                             mUniformRingPeak, slot.uniformCapacity);
++#endif
 +        if (report) {
 +            const uint64_t now = SDL_GetPerformanceCounter();
 +            const double freq = (double)SDL_GetPerformanceFrequency();

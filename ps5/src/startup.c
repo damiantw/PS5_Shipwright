@@ -31,6 +31,7 @@
 #include <dirent.h>
 #include <errno.h>
 
+#include "crash.h"
 #include "platform.h"
 
 #ifndef PS5_DATA_DIR_DEFAULT
@@ -199,4 +200,5 @@ ps5_startup(void)
       fclose(file);
    }
    choose_data_dir();
+   ps5_crash_install(data_dir);
 }

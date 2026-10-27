@@ -1,0 +1,11 @@
+# Load save slot 1 (slot 0), save it back, load it again: both loads land in play.
+# Touches the save in slot 1: the runner's caller backs up /data/soh first (DEVTOOLS.md).
+steps:
+  - require_state: [title, file_select, play]
+  - load: {slot: 0, max_seconds: 30}
+  - frames: 20
+  - mark: {}
+  - save: {slot: 0}
+  - load: {slot: 0, max_seconds: 30}
+  - assert_state: {state: play, loaded: true}
+  - screenshot: reloaded

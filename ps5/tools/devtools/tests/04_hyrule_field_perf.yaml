@@ -1,0 +1,15 @@
+# Hyrule Field, adult by day: after the load settles, 10 s standing and 10 s running
+# with no frame over 20 ms (screenshots only outside the measured windows) (the 60 fps budget is 16.7 ms). Ring peaks are recorded.
+steps:
+  - require_state: [play]
+  - warp: {entrance: HYRULE_FIELD_PAST_BRIDGE_SPAWN, age: adult, time: noon, max_seconds: 10}
+  - assert_state: {scene: 0x51, loaded: true}
+  - sleep: 3
+  - screenshot: field
+  - perf_reset: {}
+  - sleep: 10
+  - assert_perf: {max_ms: 20}
+  - perf_reset: {}
+  - stick: {x: 0, y: 80, frames: 200}
+  - assert_perf: {max_ms: 20}
+  - screenshot: field-ran           # after the measurement: a screenshot's readback stalls a frame

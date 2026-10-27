@@ -1,0 +1,31 @@
+# The Lost Woods bridge (the 01.000.000 crash report): arrive from Kokiri Forest and
+# from the Lost Woods' own exit, walk across, as a child by day. The game must keep
+# running (the snapshot keeps coming) with no frame over 50 ms after the load.
+steps:
+  - require_state: [play]
+  # from Kokiri Forest: the bridge's east end
+  - warp: {entrance: LOST_WOODS_BRIDGE_EAST_EXIT, age: child, time: noon, max_seconds: 10}
+  - assert_state: {scene: 0x5b, loaded: true}
+  - frames: 20
+  - screenshot: bridge-from-kokiri
+  - clear_text: {max_presses: 60}   # Saria's farewell, the first time
+  - perf_reset: {}
+  - mark: {}
+  - stick: {x: 0, y: 80, frames: 60}
+  - assert_moved: {min: 100}
+  - screenshot: bridge-walked
+  - assert_perf: {max_ms: 50}
+  # from the Lost Woods side (into the woods from Kokiri Forest, then to the bridge's west end)
+  - warp: {entrance: LOST_WOODS_SOUTH_EXIT, age: child, time: noon, max_seconds: 10}
+  - assert_state: {scene: 0x5b, loaded: true}
+  - screenshot: lost-woods
+  - warp: {entrance: LOST_WOODS_BRIDGE_WEST_EXIT, age: child, time: noon, max_seconds: 10}
+  - assert_state: {scene: 0x5b, loaded: true}
+  - frames: 20
+  - screenshot: bridge-from-field
+  - clear_text: {}
+  - perf_reset: {}
+  - mark: {}
+  - stick: {x: 0, y: 80, frames: 60}
+  - assert_moved: {min: 100}
+  - assert_perf: {max_ms: 50}

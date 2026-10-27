@@ -29,6 +29,11 @@ done
 for file in param.json icon0.png pic0.dds pic1.dds; do
     cmp -s "$ps5/sce_sys/$file" "$app/sce_sys/$file" || { echo "dist's sce_sys/$file is not ps5/sce_sys/$file: run build.sh" >&2; exit 2; }
 done
+# never a dev build (PS5_DEVTOOLS: the debug server, DEVTOOLS.md); its zip is package-dev.sh's
+if [[ -e $app/DEVTOOLS_BUILD.txt || -e $app/eboot.sym ]] || LC_ALL=C grep -aq 'devtools: built in, off' "$app/eboot.bin"; then
+    echo "refusing: $app is a dev build (developer tools); build the release without PS5_DEVTOOLS" >&2
+    exit 2
+fi
 # never game data, saves or settings
 forbidden='\.(z64|n64|v64|rom)$|(^|/)oot(-mq)?\.o2r$|(^|/)mq\.o2r$|\.otr$|(^|/)(userdata|Save|mods|radv-shader-cache)(/|$)|shipofharkinian\.json$|env\.txt$'
 stray=$(cd "$app" && find . -mindepth 1 | sed 's|^\./||' | grep -E -i "$forbidden" | head -1 || true)

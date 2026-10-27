@@ -147,6 +147,29 @@ jobs:
           print(f"ok: {len(names)} entries, {len(inner)} in assets.zip, no ROM or oot*.o2r")
           PY
 
+      - name: Release has no developer tools; symbols asset
+        working-directory: PS5_Shipwright
+        run: |
+          # the release ELF must not contain the debug server (DEVTOOLS.md)
+          if llvm-nm build/last-title.elf | grep -q ' ps5_devtools_'; then echo "devtools in the release ELF" >&2; exit 1; fi
+          [ ! -e dist/PPSA99320/eboot.sym ] && [ ! -e dist/PPSA99320/DEVTOOLS_BUILD.txt ]
+          ! unzip -l dist/PPSA99320.zip | grep -Eq 'eboot\.sym|DEVTOOLS_BUILD'
+          # symbols for crash reports: kept out of the zip, a separate asset
+          mkdir -p out/symbols
+          cp build/last-title.elf out/symbols/llvm-pie.elf
+          cp build/last-title.sym out/symbols/eboot.sym
+          cp dist/PPSA99320/build_id.txt out/symbols/
+          tar -C out -cJf "out/PPSA99320-symbols-$VERSION.tar.xz" symbols
+          ls -l out/*.tar.xz
+
+      - name: Dev build (developer tools; an artifact, never published)
+        working-directory: PS5_Shipwright
+        run: |
+          PS5_DEVTOOLS=1 bash ps5/tools/build.sh
+          PS5_DIST_DIR=dist-dev bash ps5/tools/assets.sh
+          bash ps5/tools/package-dev.sh
+          llvm-nm build/last-title-dev.elf | grep -q ' T ps5_devtools_start'
+
       - name: sha256 and catalog record
         working-directory: PS5_Shipwright
         run: |
@@ -176,6 +199,16 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
+          name: PPSA99320-symbols-${{ env.VERSION }}
+          path: PS5_Shipwright/out/PPSA99320-symbols-${{ env.VERSION }}.tar.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PPSA99320-dev-${{ env.VERSION }}
+          path: PS5_Shipwright/dist-dev/PPSA99320-dev.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
           name: catalog-PPSA99320-${{ env.VERSION }}
           path: PS5_Shipwright/out/PPSA99320.json
 
@@ -190,10 +223,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: PPSA99320-${{ github.ref_name }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: PPSA99320-symbols-${{ github.ref_name }}
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" PPSA99320.zip PPSA99320.zip.sha256 \
+          gh release create "$GITHUB_REF_NAME" PPSA99320.zip PPSA99320.zip.sha256 "PPSA99320-symbols-$GITHUB_REF_NAME.tar.xz" \
             --repo "$GITHUB_REPOSITORY" --title "Ship of Harkinian for PS5 $GITHUB_REF_NAME" \
-            --notes "Install: download PPSA99320.zip, unzip it, copy the PPSA99320 folder to /data/homebrew/ on the console. sha256: $(cut -d' ' -f1 PPSA99320.zip.sha256)"
+            --notes "Install: download PPSA99320.zip, unzip it, copy the PPSA99320 folder to /data/homebrew/ on the console. The symbols tarball is for reading crash reports (DEVTOOLS.md), not needed to play. sha256: $(cut -d' ' -f1 PPSA99320.zip.sha256)"
