@@ -157,6 +157,17 @@ effect can stutter once and not afterwards.
   glyphs still show the default buttons.
 - The HUD's A and B buttons keep the game's action words (no glyph is drawn on them in the
   original game either).
+- The sun's lens flare and the glow around some lights (torches, fairies) are never drawn:
+  the depth test that decides whether they're hidden runs before the frame is rendered.
+- Texture packs that replace whole scenes (e.g. Djipi's 3DS Experience, archive 30 "Hyrule
+  Field") can slow Hyrule Field down: that archive draws the field's full mesh once per
+  section, up to about seven times a frame. Disable just that archive if it's too slow.
+- A crash at the Lost Woods bridge (01.000.000, reported on a PS5 Pro) came from an animation
+  missing from `oot.o2r`. The game now carries on and names the missing file in the log; if
+  you see "could not be loaded" there, delete `/data/soh/oot.o2r` and start the game again
+  to rebuild it from your ROM.
+- Not reproduced yet, reports welcome with the log: a bright flash every few seconds in
+  Kokiri Forest after starting the game, and the castle courtyard guards' timing.
 
 ## Troubleshooting
 
