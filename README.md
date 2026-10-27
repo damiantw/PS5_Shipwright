@@ -173,8 +173,12 @@ effect can stutter once and not afterwards.
   game carries on to the title screen; this happens once after updating. With no ROM there, the
   archive is kept and a one-time notice asks for the ROM. A missing animation no longer
   crashes the game; the log names the file.
-- Not reproduced yet, reports welcome with the log: a bright flash every few seconds in
-  Kokiri Forest after starting the game, and the castle courtyard guards' timing.
+- Not reproduced, reports welcome with the log (and a clip if possible): a bright flash every
+  few seconds in Kokiri Forest after starting the game. Watching Kokiri Forest for 35 s after a
+  fresh start, with and without an HD texture pack, showed no flash on a base PS5.
+- The castle courtyard guards run at the original game's timing: game logic still runs at
+  20 updates a second and the guards move at the original speeds; only the drawing is
+  interpolated to 60 fps. Some of their patrol choices are random in the original too.
 
 ## Troubleshooting
 
